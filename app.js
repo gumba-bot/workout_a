@@ -126,7 +126,19 @@ let state = {
   workoutReportTab: 'month',
   timerInterval: null,
   timerTime: 0,
-  timerState: 'stopped'
+  timerState: 'stopped',
+
+  // Temporary editing state
+  tempGroupEditingId: null,
+  tempGroupExerciseIds: [],
+  tempGroupName: '',
+
+  // 5/3/1 Calculator state
+  fiveThreeOneRms: JSON.parse(localStorage.getItem('fiveThreeOneRms')) || { squat: 0, deadlift: 0, bench: 0, ohp: 0 },
+  fiveThreeOneOption: localStorage.getItem('fiveThreeOneOption') || 'A', // A: 4주, B: 7주
+
+  // 1RM Estimator state
+  oneRmInput: JSON.parse(localStorage.getItem('oneRmInput')) || { weight: 0, reps: 0 }
 };
 
 function getHistoryState() {
@@ -248,6 +260,10 @@ function formatDate(d) {
   return `${year}-${month}-${day}`;
 }
 
+function roundToStep(value, step = 2.5) {
+  return Math.round(value / step) * step;
+}
+
 async function loadData() {
   await initDB();
   await seedDefaults();
@@ -262,7 +278,7 @@ async function loadData() {
 async function startApp() {
   await loadData();
   state.date = formatDate(new Date());
-  
+
   // Initialize from hash if present, otherwise default to calendar
   const initialHash = window.location.hash.replace('#', '');
   if (initialHash) state.view = initialHash;
@@ -290,6 +306,8 @@ function render() {
   else if (state.view === 'exercise-report-list') renderExerciseReportList();
   else if (state.view === 'workout-report') renderWorkoutReport();
   else if (state.view === 'tutorial') renderTutorial();
+  else if (state.view === 'five-three-one') renderFiveThreeOne();
+  else if (state.view === 'one-rm-calculator') renderOneRmCalculator();
 
   setTimeout(autoFitText, 0); // Allow DOM to paint before measuring
 }
@@ -442,6 +460,12 @@ function renderSettings() {
             <button class="btn btn-secondary" id="manageExGrpBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
               <i class="ph ph-list-dashes" style="font-size: 1.2rem; min-width: 24px;"></i> 종목 / 그룹 관리
             </button>
+            <button class="btn btn-secondary" id="openFiveThreeOneBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
+              <i class="ph ph-calculator" style="font-size: 1.2rem; min-width: 24px;"></i> 5/3/1 계산기
+            </button>
+            <button class="btn btn-secondary" id="openOneRmCalcBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
+              <i class="ph ph-target" style="font-size: 1.2rem; min-width: 24px;"></i> 1RM 추정
+            </button>
             <button class="btn btn-secondary" id="openWorkoutReportBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
               <i class="ph ph-chart-bar" style="font-size: 1.2rem; min-width: 24px;"></i> 종합 운동 리포트
             </button>
@@ -502,6 +526,12 @@ function renderSettings() {
 
   document.getElementById('manageExGrpBtn').addEventListener('click', () => {
     navigateTo('add-exercise', { addExerciseSourceView: 'settings' });
+  });
+  document.getElementById('openFiveThreeOneBtn').addEventListener('click', () => {
+    navigateTo('five-three-one');
+  });
+  document.getElementById('openOneRmCalcBtn').addEventListener('click', () => {
+    navigateTo('one-rm-calculator');
   });
   document.getElementById('openWorkoutReportBtn').addEventListener('click', () => {
     navigateTo('workout-report', { reportDate: toDateStr(new Date()) });
@@ -1294,7 +1324,8 @@ function renderEditGroup() {
   if (!group) { navigateTo('add-exercise'); return; }
 
   // Temporarily store edited exerciseIds before saving
-  if (state.tempGroupExerciseIds === undefined) {
+  if (state.tempGroupEditingId !== state.editingGroupId) {
+    state.tempGroupEditingId = state.editingGroupId;
     state.tempGroupExerciseIds = [...(group.exerciseIds || [])];
     state.tempGroupName = group.name;
   }
@@ -2094,7 +2125,7 @@ function renderExerciseReportList() {
 
   document.querySelectorAll('.report-ex-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      navigateTo('report', { 
+      navigateTo('report', {
         reportExerciseId: parseInt(e.currentTarget.getAttribute('data-id')),
         reportSourceView: 'exercise-report-list'
       });
@@ -2373,6 +2404,412 @@ function renderTutorial() {
   document.getElementById('tutorialBackBtn').addEventListener('click', () => {
     navigateTo('settings');
   });
+}
+
+// 12. 5/3/1 Calculator View
+function renderFiveThreeOne() {
+  const rms = state.fiveThreeOneRms;
+  const option = state.fiveThreeOneOption;
+
+  const calculateSets = (tm, week) => {
+    let percs = [];
+    let reps = [];
+    if (week === 1) { percs = [0.65, 0.75, 0.85]; reps = ['5', '5', '5+']; }
+    else if (week === 2) { percs = [0.70, 0.80, 0.90]; reps = ['3', '3', '3+']; }
+    else if (week === 3) { percs = [0.75, 0.85, 0.95]; reps = ['5', '3', '1+']; }
+    else if (week === 4 && option === 'A') { percs = [0.40, 0.50, 0.60]; reps = ['5', '5', '5']; } // Deload
+    else if (week >= 4 && week <= 6 && option === 'B') {
+      const wMod = week - 3;
+      if (wMod === 1) { percs = [0.65, 0.75, 0.85]; reps = ['5', '5', '5+']; }
+      else if (wMod === 2) { percs = [0.70, 0.80, 0.90]; reps = ['3', '3', '3+']; }
+      else if (wMod === 3) { percs = [0.75, 0.85, 0.95]; reps = ['5', '3', '1+']; }
+    } else if (week === 7 && option === 'B') { percs = [0.40, 0.50, 0.60]; reps = ['5', '5', '5']; } // Deload B
+
+    return percs.map((p, i) => ({ weight: roundToStep(tm * p), reps: reps[i] }));
+  };
+
+  const getWeekTable = (week) => {
+    const allLifts = [
+      { name: 'S', rm: rms.squat, type: 'lower' },
+      { name: 'D', rm: rms.deadlift, type: 'lower' },
+      { name: 'B', rm: rms.bench, type: 'upper' },
+      { name: 'O', rm: rms.ohp, type: 'upper' }
+    ];
+
+    const lifts = allLifts.filter(l => l.rm > 0);
+    const count = lifts.length;
+    if (count === 0) return '';
+
+    let html = `
+      <div class="glass-panel pulse-enter" style="padding: 16px; margin-bottom: 20px;">
+        <h3 style="margin: 0 0 12px 0; color: var(--accent-primary); font-size: 1rem;">${week}주차${(option === 'A' && week === 4) || (option === 'B' && week === 7) ? ' (디로딩)' : ''}</h3>
+        <div style="display: grid; grid-template-columns: repeat(${count === 1 ? 1 : (count === 4 ? 4 : count)}, 1fr); gap: 8px;">
+    `;
+
+    lifts.forEach(lift => {
+      let currentTm = lift.rm * 0.9;
+      if (option === 'B' && week >= 4) {
+        currentTm += (lift.type === 'lower' ? 5 : 2.5);
+      }
+      const sets = calculateSets(currentTm, week);
+
+      // Responsive sizing: Larger text if fewer columns
+      const headerFs = count <= 2 ? '1rem' : '0.85rem';
+      const setsFs = count <= 2 ? '0.9rem' : '0.8rem';
+      const cardMaxWidth = count === 1 ? '200px' : 'none';
+      const cardMargin = count === 1 ? '0 auto' : '0';
+
+      html += `
+        <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; border: 1px solid rgba(255,255,255,0.05); max-width: ${cardMaxWidth}; margin: ${cardMargin}; width: 100%;">
+          <div style="font-weight: 700; font-size: ${headerFs}; margin-bottom: 8px; color: var(--accent-primary); text-align: center; border-bottom: 1px solid rgba(255,255,255,0.1); padding-bottom: 6px;">${lift.name}</div>
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            ${sets.map(s => `
+              <div style="font-size: ${setsFs}; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-weight: 500;">${s.weight}kg</span>
+                <span style="color: var(--text-muted); font-size: 0.9em;">x${s.reps}</span>
+              </div>`).join('')}
+          </div>
+        </div>
+      `;
+    });
+
+    html += `</div></div>`;
+    return html;
+  };
+
+  const updateOnlyValues = () => {
+    const resultsEl = document.getElementById('calcResults');
+    if (!resultsEl) return;
+
+    document.getElementById('rmSquat').value = state.fiveThreeOneRms.squat || '';
+    document.getElementById('rmDead').value = state.fiveThreeOneRms.deadlift || '';
+    document.getElementById('rmBench').value = state.fiveThreeOneRms.bench || '';
+    document.getElementById('rmOhp').value = state.fiveThreeOneRms.ohp || '';
+
+    const descEl = document.getElementById('calcStrategyDesc');
+    if (descEl) descEl.innerText = state.fiveThreeOneOption === 'A' ? 'W1(5s), W2(3s), W3(531), W4(Deload) 순으로 진행됩니다.' : '3주 훈련 후 TM을 증량(+2.5/5kg)하여 3주 더 훈련하고 7주차에 디로딩합니다.';
+
+    document.querySelectorAll('.mode-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.getAttribute('data-opt') === state.fiveThreeOneOption);
+    });
+
+    const anyRmEntered = state.fiveThreeOneRms.squat > 0 || state.fiveThreeOneRms.deadlift > 0 || state.fiveThreeOneRms.bench > 0 || state.fiveThreeOneRms.ohp > 0;
+    let weeksHtml = '';
+    if (anyRmEntered) {
+      const totalWeeks = state.fiveThreeOneOption === 'A' ? 4 : 7;
+      for (let w = 1; w <= totalWeeks; w++) {
+        weeksHtml += getWeekTable(w);
+      }
+      resultsEl.innerHTML = weeksHtml;
+    } else {
+      resultsEl.innerHTML = `
+        <div class="glass-panel" style="padding: 40px 20px; text-align: center; opacity: 0.8; margin-bottom: 20px;">
+          <i class="ph ph-info" style="font-size: 2.5rem; margin-bottom: 15px; display: block; color: var(--accent-primary);"></i>
+          <div style="font-size: 1rem; line-height: 1.5; color: var(--text-primary);">
+            S, D, B, O 중 <span style="color: var(--accent-primary); font-weight: 700;">하나 이상의 1RM</span>을<br>
+            입력하면 일주일 단위 계산이 시작됩니다.
+          </div>
+        </div>
+      `;
+    }
+    setTimeout(autoFitText, 0);
+  };
+
+  if (document.getElementById('calcResults')) {
+    updateOnlyValues();
+    return;
+  }
+
+  let weeksHtml = '';
+  const anyRmEntered = rms.squat > 0 || rms.deadlift > 0 || rms.bench > 0 || rms.ohp > 0;
+  if (anyRmEntered) {
+    const totalWeeks = option === 'A' ? 4 : 7;
+    for (let w = 1; w <= totalWeeks; w++) {
+      weeksHtml += getWeekTable(w);
+    }
+  } else {
+    weeksHtml = `
+      <div class="glass-panel" style="padding: 40px 20px; text-align: center; opacity: 0.8; margin-bottom: 20px;">
+        <i class="ph ph-info" style="font-size: 2.5rem; margin-bottom: 15px; display: block; color: var(--accent-primary);"></i>
+        <div style="font-size: 1rem; line-height: 1.5; color: var(--text-primary);">
+          S, D, B, O 중 <span style="color: var(--accent-primary); font-weight: 700;">하나 이상의 1RM</span>을<br>
+          입력하면 일주일 단위 계산이 시작됩니다.
+        </div>
+      </div>
+    `;
+  }
+
+  appEl.innerHTML = `
+    <header>
+      <button class="icon-btn" id="calcBackBtn"><i class="ph ph-arrow-left"></i></button>
+      <h1>5/3/1 계산기</h1>
+      <button class="icon-btn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i></button>
+    </header>
+    <main style="padding-bottom: 40px;">
+      <div class="glass-panel" style="padding: 20px; margin-bottom: 25px;">
+        <div style="margin-bottom: 25px;">
+          <h3 style="font-size: 1rem; margin-bottom: 15px;">1RM 입력</h3>
+          
+          <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-bottom: 15px;">
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">S</label>
+              <input type="number" id="rmSquat" class="form-control" value="${rms.squat || ''}" placeholder="0" step="2.5" style="padding: 8px 4px; text-align: center;">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">D</label>
+              <input type="number" id="rmDead" class="form-control" value="${rms.deadlift || ''}" placeholder="0" step="2.5" style="padding: 8px 4px; text-align: center;">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">B</label>
+              <input type="number" id="rmBench" class="form-control" value="${rms.bench || ''}" placeholder="0" step="2.5" style="padding: 8px 4px; text-align: center;">
+            </div>
+            <div class="form-group">
+              <label style="font-size: 0.75rem;">O</label>
+              <input type="number" id="rmOhp" class="form-control" value="${rms.ohp || ''}" placeholder="0" step="2.5" style="padding: 8px 4px; text-align: center;">
+            </div>
+          </div>
+
+          <button class="btn btn-secondary" id="incCycleBtn" style="width: 100%; padding: 10px; font-size: 0.9rem; border-radius: 8px; background: rgba(var(--accent-primary-rgb), 0.15); border: 1px solid rgba(var(--accent-primary-rgb), 0.2); color: var(--accent-primary); font-weight: 600; justify-content: center; touch-action: manipulation;">
+            <i class="ph ph-plus-circle" style="font-size: 1.1rem;"></i> 차기 사이클로 증량 (+2.5kg)
+          </button>
+        </div>
+        
+        <div>
+          <h3 style="font-size: 1rem; margin-bottom: 15px;">디로딩 전략 선택</h3>
+          <div class="mode-toggle">
+            <div class="mode-btn ${option === 'A' ? 'active' : ''}" data-opt="A">Option A (4주)</div>
+            <div class="mode-btn ${option === 'B' ? 'active' : ''}" data-opt="B">Option B (7주)</div>
+          </div>
+          <p id="calcStrategyDesc" style="font-size: 0.8rem; color: var(--text-muted); margin-top: 10px; line-height: 1.4;">
+            ${option === 'A' ? 'W1(5s), W2(3s), W3(531), W4(Deload) 순으로 진행됩니다.' : '3주 훈련 후 TM을 증량(+2.5/5kg)하여 3주 더 훈련하고 7주차에 디로딩합니다.'}
+          </p>
+        </div>
+      </div>
+
+      <div id="calcResults">
+        ${weeksHtml}
+      </div>
+    </main>
+  `;
+
+  document.getElementById('calcBackBtn').addEventListener('click', () => {
+    navigateTo('settings');
+  });
+
+  document.getElementById('incCycleBtn').addEventListener('click', () => {
+    state.fiveThreeOneRms.squat = (state.fiveThreeOneRms.squat || 0) + 2.5;
+    state.fiveThreeOneRms.deadlift = (state.fiveThreeOneRms.deadlift || 0) + 2.5;
+    state.fiveThreeOneRms.bench = (state.fiveThreeOneRms.bench || 0) + 2.5;
+    state.fiveThreeOneRms.ohp = (state.fiveThreeOneRms.ohp || 0) + 2.5;
+    renderFiveThreeOne();
+  });
+
+  ['rmSquat', 'rmDead', 'rmBench', 'rmOhp'].forEach(id => {
+    document.getElementById(id).addEventListener('input', (e) => {
+      const val = parseFloat(e.target.value) || 0;
+      if (id === 'rmSquat') state.fiveThreeOneRms.squat = val;
+      if (id === 'rmDead') state.fiveThreeOneRms.deadlift = val;
+      if (id === 'rmBench') state.fiveThreeOneRms.bench = val;
+      if (id === 'rmOhp') state.fiveThreeOneRms.ohp = val;
+
+      // Update results without full re-render to preserve focus
+      const resultsEl = document.getElementById('calcResults');
+      if (resultsEl) {
+        const newRms = state.fiveThreeOneRms;
+        const newOption = state.fiveThreeOneOption;
+        const newAnyEntered = newRms.squat > 0 || newRms.deadlift > 0 || newRms.bench > 0 || newRms.ohp > 0;
+
+        if (newAnyEntered) {
+          let newHtml = '';
+          const totalW = newOption === 'A' ? 4 : 7;
+          for (let w = 1; w <= totalW; w++) {
+            newHtml += getWeekTable(w);
+          }
+          resultsEl.innerHTML = newHtml;
+        } else {
+          resultsEl.innerHTML = `
+            <div class="glass-panel" style="padding: 40px 20px; text-align: center; opacity: 0.8; margin-bottom: 20px;">
+              <i class="ph ph-info" style="font-size: 2.5rem; margin-bottom: 15px; display: block; color: var(--accent-primary);"></i>
+              <div style="font-size: 1rem; line-height: 1.5; color: var(--text-primary);">
+                S, D, B, O 중 <span style="color: var(--accent-primary); font-weight: 700;">하나 이상의 1RM</span>을<br>
+                입력하면 일주일 단위 계산이 시작됩니다.
+              </div>
+            </div>
+          `;
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll('.mode-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      state.fiveThreeOneOption = e.target.getAttribute('data-opt');
+      renderFiveThreeOne();
+    });
+  });
+
+  setTimeout(autoFitText, 0);
+}
+
+// 13. 1RM Calculator (Estimator) View
+function renderOneRmCalculator() {
+  const input = state.oneRmInput;
+  const w = input.weight || 0;
+  const r = input.reps || 0;
+
+  let resultsHtml = '';
+  if (w > 0 && r > 0) {
+    // Epley: W * (1 + R/30)
+    const epleyRaw = w * (1 + r / 30);
+    // Brzycki: W / (1.0278 - (0.0278 * R))
+    const brzyckiRaw = w / (1.0278 - (0.0278 * r));
+    // Wendler: (W * R * 0.0333) + W
+    const wendlerRaw = (w * r * 0.0333) + w;
+
+    const averageRaw = (epleyRaw + brzyckiRaw + wendlerRaw) / 3;
+
+    const epley = roundToStep(epleyRaw, 0.5);
+    const brzycki = roundToStep(brzyckiRaw, 0.5);
+    const wendler = roundToStep(wendlerRaw, 0.5);
+    const average = roundToStep(averageRaw, 0.5);
+
+    resultsHtml = `
+      <div class="glass-panel" style="padding: 20px; margin-bottom: 20px;">
+        <h3 style="font-size: 1.1rem; color: var(--accent-primary); margin: 0 0 20px 0; text-align: center;">추정 결과 (단위: kg)</h3>
+        
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+          <div style="background: rgba(var(--accent-primary-rgb), 0.1); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid rgba(var(--accent-primary-rgb), 0.2);">
+            <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px;">최종 추천 1RM (평균값)</div>
+            <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-primary);">${average.toFixed(1)}</div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+            <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05);">
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Epley</div>
+              <div style="font-size: 1.1rem; font-weight: 700;">${epley.toFixed(1)}</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05);">
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Brzycki</div>
+              <div style="font-size: 1.1rem; font-weight: 700;">${brzycki.toFixed(1)}</div>
+            </div>
+            <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05);">
+              <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Wendler</div>
+              <div style="font-size: 1.1rem; font-weight: 700;">${wendler.toFixed(1)}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="glass-panel" style="padding: 16px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+        <i class="ph ph-info-circle" style="color: var(--accent-primary); margin-right: 4px;"></i>
+        여러 공식을 평균낸 수치입니다. 고립 운동(머신)은 Brzycki, 전신 운동(바벨)은 Epley 공식을 더 신뢰할 수 있습니다.
+      </div>
+    `;
+  } else {
+    resultsHtml = `
+      <div class="glass-panel" style="padding: 40px 20px; text-align: center; opacity: 0.7;">
+        <i class="ph ph-calculator" style="font-size: 3rem; margin-bottom: 15px; display: block; color: var(--text-muted); margin-left: auto; margin-right: auto;"></i>
+        데이터를 입력하면 추정 1RM이 실시간으로 계산됩니다.
+      </div>
+    `;
+  }
+
+  appEl.innerHTML = `
+    <header>
+      <button class="icon-btn" id="oneRmBackBtn"><i class="ph ph-arrow-left"></i></button>
+      <h1>1RM 추정</h1>
+      <button class="icon-btn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i></button>
+    </header>
+    <main>
+      <div class="glass-panel" style="padding: 20px; margin-bottom: 25px;">
+        <h3 style="font-size: 1rem; margin-bottom: 15px;">수행 데이터 입력</h3>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group">
+            <label>수행 중량 (kg)</label>
+            <input type="number" id="oneRmWeight" class="form-control" value="${input.weight || ''}" placeholder="0" step="0.5">
+          </div>
+          <div class="form-group">
+            <label>반복 횟수 (회)</label>
+            <input type="number" id="oneRmReps" class="form-control" value="${input.reps || ''}" placeholder="0" step="1">
+          </div>
+        </div>
+      </div>
+      
+      <div id="oneRmResults">
+        ${resultsHtml}
+      </div>
+    </main>
+  `;
+
+  document.getElementById('oneRmBackBtn').addEventListener('click', () => {
+    navigateTo('settings');
+  });
+
+  const updateResults = () => {
+    const freshW = parseFloat(document.getElementById('oneRmWeight').value) || 0;
+    const freshR = parseInt(document.getElementById('oneRmReps').value) || 0;
+    state.oneRmInput.weight = freshW;
+    state.oneRmInput.reps = freshR;
+    localStorage.setItem('oneRmInput', JSON.stringify(state.oneRmInput));
+
+    // Partial update to avoid losing focus
+    const container = document.getElementById('oneRmResults');
+    if (!container) return;
+
+    if (freshW > 0 && freshR > 0) {
+      const eRaw = freshW * (1 + freshR / 30);
+      const bRaw = freshW / (1.0278 - (0.0278 * freshR));
+      const wRaw = (freshW * freshR * 0.0333) + freshW;
+      const avgRaw = (eRaw + bRaw + wRaw) / 3;
+
+      const e = roundToStep(eRaw, 0.5);
+      const b = roundToStep(bRaw, 0.5);
+      const w = roundToStep(wRaw, 0.5);
+      const avg = roundToStep(avgRaw, 0.5);
+
+      container.innerHTML = `
+        <div class="glass-panel" style="padding: 20px; margin-bottom: 20px;">
+          <h3 style="font-size: 1.1rem; color: var(--accent-primary); margin: 0 0 20px 0; text-align: center;">추정 결과 (단위: kg)</h3>
+          <div style="display: flex; flex-direction: column; gap: 12px;">
+            <div style="background: rgba(var(--accent-primary-rgb), 0.1); border-radius: 12px; padding: 20px; text-align: center; border: 1px solid rgba(var(--accent-primary-rgb), 0.2);">
+              <div style="font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 5px;">최종 추천 1RM (평균값)</div>
+              <div style="font-size: 2.5rem; font-weight: 800; color: var(--accent-primary);">${avg.toFixed(1)}</div>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 8px;">
+              <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Epley</div>
+                <div style="font-size: 1.1rem; font-weight: 700;">${e.toFixed(1)}</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Brzycki</div>
+                <div style="font-size: 1.1rem; font-weight: 700;">${b.toFixed(1)}</div>
+              </div>
+              <div style="background: rgba(255,255,255,0.03); border-radius: 8px; padding: 12px; text-align: center; border: 1px solid rgba(255,255,255,0.05);">
+                <div style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 4px;">Wendler</div>
+                <div style="font-size: 1.1rem; font-weight: 700;">${w.toFixed(1)}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="glass-panel" style="padding: 16px; font-size: 0.85rem; color: var(--text-secondary); line-height: 1.5;">
+          <i class="ph ph-info-circle" style="color: var(--accent-primary); margin-right: 4px;"></i>
+          여러 공식을 평균낸 수치입니다. 고립 운동(머신)은 Brzycki, 전신 운동(바벨)은 Epley 공식을 더 신뢰할 수 있습니다.
+        </div>
+      `;
+    } else {
+      container.innerHTML = `
+        <div class="glass-panel" style="padding: 40px 20px; text-align: center; opacity: 0.7;">
+          <i class="ph ph-calculator" style="font-size: 3rem; margin-bottom: 15px; display: block; color: var(--text-muted); margin-left: auto; margin-right: auto;"></i>
+          데이터를 입력하면 추정 1RM이 실시간으로 계산됩니다.
+        </div>
+      `;
+    }
+  };
+
+  document.getElementById('oneRmWeight').addEventListener('input', updateResults);
+  document.getElementById('oneRmReps').addEventListener('input', updateResults);
+
+  setTimeout(autoFitText, 0);
 }
 
 // Start
