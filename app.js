@@ -127,6 +127,7 @@ let state = {
   timerInterval: null,
   timerTime: 0,
   timerState: 'stopped',
+  timerExerciseId: null, // Track which exercise the current timer belongs to
 
   // Temporary editing state
   tempGroupEditingId: null,
@@ -1703,8 +1704,11 @@ function handleTimerTick() {
       clearInterval(state.timerInterval);
       playTimerEndNotification();
 
-      const inputEl = document.getElementById('restTimerInput');
-      state.timerTime = parseInt(inputEl ? inputEl.getAttribute('data-default') : 90);
+      const w = state.workouts[state.date];
+      const exItem = w.exercises[state.activeExerciseIndex];
+      const dictEx = state.exercises.find(e => e.id === exItem.exerciseId);
+      const defRest = dictEx ? dictEx.defaultRestTime : 90;
+      state.timerTime = defRest;
       setTimerText();
 
       renderExecutionControls();
@@ -1774,8 +1778,15 @@ function renderExecution() {
   const currentSetNum = state.activeSetIndex + 1;
   const defRest = dictEx ? dictEx.defaultRestTime : 90;
 
-  if (state.timerState === 'stopped' && state.timerTime === 0) {
-    state.timerTime = defRest; // Reset logic on entry
+  // Reset timer if exercise switched or if it's currently stopped
+  if (state.timerExerciseId !== exItem.exerciseId) {
+    if (state.timerInterval) clearInterval(state.timerInterval);
+    state.timerInterval = null;
+    state.timerState = 'stopped';
+    state.timerTime = defRest;
+    state.timerExerciseId = exItem.exerciseId;
+  } else if (state.timerState === 'stopped') {
+    state.timerTime = defRest;
   }
 
   let dotsHtml = '';
