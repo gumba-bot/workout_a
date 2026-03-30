@@ -153,7 +153,7 @@ function navigateTo(view, params = {}, push = true) {
     Object.assign(state, params);
   }
   if (push) {
-    history.pushState(getHistoryState(), '', '');
+    history.pushState(getHistoryState(), '', '#' + view);
   }
   render();
 }
@@ -161,8 +161,16 @@ function navigateTo(view, params = {}, push = true) {
 window.addEventListener('popstate', (event) => {
   if (event.state) {
     Object.assign(state, event.state);
-    render();
+  } else {
+    // Fallback: If state is missing, try to determine view from hash
+    const hash = window.location.hash.replace('#', '');
+    if (hash) {
+      state.view = hash;
+    } else {
+      state.view = 'calendar';
+    }
   }
+  render();
 });
 
 let dragData = {
@@ -254,8 +262,13 @@ async function loadData() {
 async function startApp() {
   await loadData();
   state.date = formatDate(new Date());
+  
+  // Initialize from hash if present, otherwise default to calendar
+  const initialHash = window.location.hash.replace('#', '');
+  if (initialHash) state.view = initialHash;
+
   // Set initial history state
-  history.replaceState(getHistoryState(), '', '');
+  history.replaceState(getHistoryState(), '', '#' + state.view);
   render();
 }
 
