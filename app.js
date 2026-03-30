@@ -1,4 +1,4 @@
-﻿// --- Database Operations ---
+// --- Database Operations ---
 const DB_NAME = 'WorkoutLogDB';
 const DB_VERSION = 1;
 
@@ -129,6 +129,42 @@ let state = {
   timerState: 'stopped'
 };
 
+function getHistoryState() {
+  return {
+    view: state.view,
+    date: state.date,
+    calendarYear: state.calendarYear,
+    calendarMonth: state.calendarMonth,
+    addExerciseTab: state.addExerciseTab,
+    addExerciseSourceView: state.addExerciseSourceView,
+    activeExerciseIndex: state.activeExerciseIndex,
+    activeSetIndex: state.activeSetIndex,
+    editingExerciseId: state.editingExerciseId,
+    editingGroupId: state.editingGroupId,
+    reportExerciseId: state.reportExerciseId,
+    workoutReportTab: state.workoutReportTab,
+    reportDate: state.reportDate
+  };
+}
+
+function navigateTo(view, params = {}, push = true) {
+  state.view = view;
+  if (params) {
+    Object.assign(state, params);
+  }
+  if (push) {
+    history.pushState(getHistoryState(), '', '');
+  }
+  render();
+}
+
+window.addEventListener('popstate', (event) => {
+  if (event.state) {
+    Object.assign(state, event.state);
+    render();
+  }
+});
+
 let dragData = {
   dragEl: null,
   placeholder: null,
@@ -218,6 +254,8 @@ async function loadData() {
 async function startApp() {
   await loadData();
   state.date = formatDate(new Date());
+  // Set initial history state
+  history.replaceState(getHistoryState(), '', '');
   render();
 }
 
@@ -335,8 +373,7 @@ async function importAllData() {
       // Reload state
       await loadData();
       alert('데이터가 복원되었습니다.');
-      state.view = 'calendar';
-      render();
+      navigateTo('calendar');
     } catch (err) {
       alert('파일을 읽는 중 오류가 발생했습니다: ' + err.message);
     }
@@ -422,7 +459,7 @@ function renderSettings() {
   `;
 
   document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-    state.view = 'calendar'; render();
+    navigateTo('calendar');
   });
 
   document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -447,23 +484,17 @@ function renderSettings() {
   document.getElementById('importDataBtn').addEventListener('click', () => importAllData());
 
   document.getElementById('openTutorialBtn').addEventListener('click', () => {
-    state.view = 'tutorial';
-    render();
+    navigateTo('tutorial');
   });
 
   document.getElementById('manageExGrpBtn').addEventListener('click', () => {
-    state.addExerciseSourceView = 'settings';
-    state.view = 'add-exercise';
-    render();
+    navigateTo('add-exercise', { addExerciseSourceView: 'settings' });
   });
   document.getElementById('openWorkoutReportBtn').addEventListener('click', () => {
-    state.reportDate = toDateStr(new Date());
-    state.view = 'workout-report';
-    render();
+    navigateTo('workout-report', { reportDate: toDateStr(new Date()) });
   });
   document.getElementById('openExerciseReportBtn').addEventListener('click', () => {
-    state.view = 'exercise-report-list';
-    render();
+    navigateTo('exercise-report-list');
   });
 }
 
@@ -574,9 +605,8 @@ function renderCalendar() {
     if (e.target.classList.contains('calendar-day') && !e.target.classList.contains('empty')) {
       const clickedDate = e.target.getAttribute('data-date');
       if (state.date === clickedDate) {
-        // Double click -> Go to workout
-        state.view = 'workout';
-        render();
+        // Double click (or click on already selected) -> Go to workout
+        navigateTo('workout');
       } else {
         state.date = clickedDate;
         render(); // re-render to show selection
@@ -585,13 +615,11 @@ function renderCalendar() {
   });
 
   document.getElementById('startWorkoutBtn').addEventListener('click', () => {
-    state.view = 'workout';
-    render();
+    navigateTo('workout');
   });
 
   document.getElementById('settingsBtn').addEventListener('click', () => {
-    state.view = 'settings';
-    render();
+    navigateTo('settings');
   });
 
   document.getElementById('calPrevBtn').addEventListener('click', () => {
@@ -755,13 +783,12 @@ function renderWorkout() {
 
   // Event Listeners
   document.getElementById('backToCalBtn').addEventListener('click', () => {
-    state.view = 'calendar'; render();
+    navigateTo('calendar');
   });
 
   const addExBtn = document.getElementById('addExBtn');
   if (addExBtn) addExBtn.addEventListener('click', () => {
-    state.addExerciseSourceView = 'workout';
-    state.view = 'add-exercise'; render();
+    navigateTo('add-exercise', { addExerciseSourceView: 'workout' });
   });
 
   const toggleAllBtn = document.getElementById('toggleAllBtn');
@@ -833,9 +860,7 @@ function renderWorkout() {
       e.preventDefault();
       const exIdx = parseInt(e.currentTarget.getAttribute('data-ex'));
       const activeEx = w.exercises[exIdx];
-      state.reportExerciseId = activeEx.exerciseId;
-      state.view = 'report';
-      render();
+      navigateTo('report', { reportExerciseId: activeEx.exerciseId });
     });
   });
 
@@ -892,8 +917,7 @@ function renderWorkout() {
       state.activeExerciseIndex = exIdx;
       state.activeSetIndex = firstIncompleteIdx !== -1 ? firstIncompleteIdx : 0;
       state.timerState = 'stopped';
-      state.view = 'execution';
-      render();
+      navigateTo('execution');
     });
   });
 
@@ -1084,7 +1108,7 @@ function renderAddExercise() {
   `;
 
   document.getElementById('closeAddBtn').addEventListener('click', () => {
-    state.view = state.addExerciseSourceView === 'settings' ? 'settings' : 'workout'; render();
+    navigateTo(state.addExerciseSourceView === 'settings' ? 'settings' : 'workout');
   });
 
   // Tab clicks
@@ -1099,9 +1123,7 @@ function renderAddExercise() {
   document.querySelectorAll('.edit-ex-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation(); // prevent adding to workout
-      state.editingExerciseId = parseInt(e.currentTarget.getAttribute('data-id'));
-      state.view = 'edit-exercise';
-      render();
+      navigateTo('edit-exercise', { editingExerciseId: parseInt(e.currentTarget.getAttribute('data-id')) });
     });
   });
 
@@ -1109,11 +1131,7 @@ function renderAddExercise() {
   document.querySelectorAll('.edit-grp-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
-      state.editingGroupId = parseInt(e.currentTarget.getAttribute('data-id'));
-      state.tempGroupName = undefined;
-      state.tempGroupExerciseIds = undefined;
-      state.view = 'edit-group';
-      render();
+      navigateTo('edit-group', { editingGroupId: parseInt(e.currentTarget.getAttribute('data-id')) });
     });
   });
 
@@ -1150,7 +1168,7 @@ function renderAddExercise() {
           }
         }
       }
-      state.view = 'workout'; render();
+      navigateTo('workout');
     });
   });
 
@@ -1170,12 +1188,11 @@ function renderAddExercise() {
 
         if (state.addExerciseSourceView === 'settings') {
           alert("종목이 성공적으로 추가되었습니다.");
-          state.view = 'add-exercise';
+          navigateTo('add-exercise');
         } else {
           await appendExerciseToWorkout(id);
-          state.view = 'workout';
+          navigateTo('workout');
         }
-        render();
       } else {
         alert('종목명과 부위를 모두 입력해주세요.');
       }
@@ -1186,7 +1203,7 @@ function renderAddExercise() {
   const goCreateGroupBtn = document.getElementById('goCreateGroupBtn');
   if (goCreateGroupBtn) {
     goCreateGroupBtn.addEventListener('click', () => {
-      state.view = 'create-group'; render();
+      navigateTo('create-group');
     });
   }
 }
@@ -1227,7 +1244,7 @@ function renderCreateGroup() {
   `;
 
   document.getElementById('cancelCreateGrpBtn').addEventListener('click', () => {
-    state.view = 'add-exercise'; render();
+    navigateTo('add-exercise');
   });
 
   let checkedOrder = [];
@@ -1251,7 +1268,7 @@ function renderCreateGroup() {
       }
       await addRecord('groups', { name, exerciseIds: checkedOrder });
       state.groups = await getAllRecords('groups'); // refresh
-      state.view = 'add-exercise'; render();
+      navigateTo('add-exercise');
     } else {
       alert("그룹명과 최소 1개 이상의 종목을 선택해주세요.");
     }
@@ -1261,7 +1278,7 @@ function renderCreateGroup() {
 // 4.3 Edit Group View
 function renderEditGroup() {
   const group = state.groups.find(g => g.id === state.editingGroupId);
-  if (!group) { state.view = 'add-exercise'; return render(); }
+  if (!group) { navigateTo('add-exercise'); return; }
 
   // Temporarily store edited exerciseIds before saving
   if (state.tempGroupExerciseIds === undefined) {
@@ -1344,7 +1361,7 @@ function renderEditGroup() {
   `;
 
   document.getElementById('cancelEditGrpBtn').addEventListener('click', () => {
-    state.view = 'add-exercise'; render();
+    navigateTo('add-exercise');
   });
 
   const delBtn = document.getElementById('deleteGrpBtn');
@@ -1355,7 +1372,7 @@ function renderEditGroup() {
       const req = store.delete(group.id);
       req.onsuccess = async () => {
         state.groups = await getAllRecords('groups');
-        state.view = 'add-exercise'; render();
+        navigateTo('add-exercise');
       };
     }
   });
@@ -1371,7 +1388,7 @@ function renderEditGroup() {
       group.exerciseIds = state.tempGroupExerciseIds;
       await putRecord('groups', group);
       state.groups = await getAllRecords('groups'); // refresh
-      state.view = 'add-exercise'; render();
+      navigateTo('add-exercise');
     } else {
       alert("그룹명과 최소 1개 이상의 종목이 필요합니다.");
     }
@@ -1479,7 +1496,7 @@ function renderEditExercise() {
   `;
 
   document.getElementById('cancelEditExBtn').addEventListener('click', () => {
-    state.view = 'add-exercise'; render();
+    navigateTo('add-exercise');
   });
 
   document.getElementById('saveEditExBtn').addEventListener('click', async () => {
@@ -1497,7 +1514,7 @@ function renderEditExercise() {
       ex.defaultRestTime = rest;
       await putRecord('exercises', ex);
       state.exercises = await getAllRecords('exercises'); // refresh
-      state.view = 'add-exercise'; render();
+      navigateTo('add-exercise');
     } else {
       alert("종목명과 부위를 모두 입력해주세요.");
     }
@@ -1520,7 +1537,7 @@ function renderEditExercise() {
             }
           }
           state.groups = await getAllRecords('groups');
-          state.view = 'add-exercise'; render();
+          navigateTo('add-exercise');
         };
       }
     });
@@ -1818,7 +1835,7 @@ function renderExecution() {
 
   document.getElementById('execBackBtn').addEventListener('click', () => {
     clearInterval(state.timerInterval);
-    state.view = 'workout'; render();
+    navigateTo('workout');
   });
 
   renderExecutionControls();
@@ -1906,7 +1923,7 @@ function renderExecution() {
     } else {
       // Completed last set, go back or show well done
       clearInterval(state.timerInterval);
-      state.view = 'workout'; render();
+      navigateTo('workout');
     }
   });
 }
@@ -1985,14 +2002,12 @@ function renderReport() {
   `;
 
   document.getElementById('reportBackBtn').addEventListener('click', () => {
-    state.reportExerciseId = null;
     if (state.reportSourceView === 'exercise-report-list') {
       state.reportSourceView = null;
-      state.view = 'exercise-report-list';
+      navigateTo('exercise-report-list');
     } else {
-      state.view = 'workout';
+      navigateTo('workout');
     }
-    render();
   });
 }
 
@@ -2046,7 +2061,7 @@ function renderExerciseReportList() {
   `;
 
   document.getElementById('exReportBackBtn').addEventListener('click', () => {
-    state.view = 'settings'; render();
+    navigateTo('settings');
   });
 
   document.querySelectorAll('.part-header').forEach(header => {
@@ -2066,10 +2081,10 @@ function renderExerciseReportList() {
 
   document.querySelectorAll('.report-ex-item').forEach(item => {
     item.addEventListener('click', (e) => {
-      state.reportExerciseId = parseInt(e.currentTarget.getAttribute('data-id'));
-      state.view = 'report';
-      state.reportSourceView = 'exercise-report-list';
-      render();
+      navigateTo('report', { 
+        reportExerciseId: parseInt(e.currentTarget.getAttribute('data-id')),
+        reportSourceView: 'exercise-report-list'
+      });
     });
   });
 }
@@ -2245,7 +2260,7 @@ function renderWorkoutReport() {
   `;
 
   document.getElementById('wReportBackBtn').addEventListener('click', () => {
-    state.view = 'settings'; render();
+    navigateTo('settings');
   });
 
   document.querySelectorAll('.tab').forEach(t => {
@@ -2343,7 +2358,7 @@ function renderTutorial() {
   `;
 
   document.getElementById('tutorialBackBtn').addEventListener('click', () => {
-    state.view = 'settings'; render();
+    navigateTo('settings');
   });
 }
 
