@@ -2462,12 +2462,22 @@ function renderTutorial() {
         </p>
       </div>
 
-      <div class="glass-panel" style="padding: 16px; margin-bottom: 30px;">
+      <div class="glass-panel" style="padding: 16px; margin-bottom: 20px;">
         <h3 style="color: var(--accent-primary); margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
           <i class="ph-fill ph-floppy-disk" style="flex-shrink:0;"></i> 7. 기기 변경 시 백업 및 복원
         </h3>
         <p style="color: var(--text-secondary); margin: 0;">
           앱의 모든 기록은 브라우저 상에 안전하게 저장됩니다. 기기를 변경할 상황을 대비하여 설정에서 <b>[데이터 백업]</b> 파일을 다운로드해 두면, 새 기기에서 간편하게 복원할 수 있습니다.
+        </p>
+      </div>
+
+      <div class="glass-panel" style="padding: 16px; margin-bottom: 30px;">
+        <h3 style="color: var(--accent-primary); margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph-fill ph-heartbeat" style="flex-shrink:0;"></i> 8. 인바디 기록 및 체성분 변화 추적
+        </h3>
+        <p style="color: var(--text-secondary); margin: 0;">
+          설정 메뉴의 <b>[인바디 기록 관리]</b>를 통해 체성분 데이터를 체계적으로 관리해 보세요.<br><br>
+          측정 데이터를 입력하면 BMI와 판정 가이드가 자동으로 제공되며, 이전 기록과 비교하여 각 지표의 <b>증감(+/-)을 색상(초록/빨강)</b>으로 알기 쉽게 표시해 줍니다. 또한, 기록이 쌓이면 <b>듀얼 축(좌/우) 그래프</b>를 통해 다채로운 색상으로 시각화된 성장 추이를 한눈에 확인할 수 있습니다.
         </p>
       </div>
 
