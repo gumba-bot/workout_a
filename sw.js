@@ -1,10 +1,10 @@
-const CACHE_NAME = 'workout-log-cache-v1';
+const CACHE_NAME = 'workout-log-cache-v2';
 const urlsToCache = [
   './',
   './index.html',
   './app.js',
   './styles.css',
-  './icon.svg'
+  './icon.png'
 ];
 
 self.addEventListener('install', event => {

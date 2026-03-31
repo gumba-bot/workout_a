@@ -1,4 +1,4 @@
-// --- Database Operations ---
+﻿// --- Database Operations ---
 const DB_NAME = 'WorkoutLogDB';
 const DB_VERSION = 3; // Bumped to 3 to ensure InBody store creation for all users
 
@@ -124,7 +124,7 @@ async function seedDefaults() {
       { id: 2, name: '어깨', exerciseIds: [21] },
       { id: 3, name: '등', exerciseIds: [19, 5, 12, 32, 31] },
       { id: 4, name: '가슴/팔', exerciseIds: [3, 15, 18, 8, 11, 10, 24] },
-      { id: 5, name: '흉추 가동성', exerciseIds: [26, 30, 27, 28, 29] }
+      { id: 5, name: 'YAMAMOTO', exerciseIds: [26, 30, 27, 28, 29] }
     ];
     for (const g of defaultGroups) {
       await addRecord('groups', g);
@@ -3208,18 +3208,18 @@ function renderInBodyGraph(containerId, records) {
       
       <!-- Left Axis Labels (5 values) -->
       ${[0, 0.25, 0.5, 0.75, 1].map(ratio => {
-        const val = leftScale.max - (leftScale.max - leftScale.min) * ratio;
-        const y = padding.top + usableHeight * ratio;
-        return `<text x="${padding.left - 5}" y="${y}" font-size="8" fill="var(--text-muted)" text-anchor="end" alignment-baseline="middle">${val.toFixed(0)}</text>`;
-      }).join('')}
+    const val = leftScale.max - (leftScale.max - leftScale.min) * ratio;
+    const y = padding.top + usableHeight * ratio;
+    return `<text x="${padding.left - 5}" y="${y}" font-size="8" fill="var(--text-muted)" text-anchor="end" alignment-baseline="middle">${val.toFixed(0)}</text>`;
+  }).join('')}
       <text x="${padding.left - 5}" y="${padding.top - 12}" font-size="8" fill="var(--text-muted)" text-anchor="end" font-weight="bold">L (kg)</text>
 
       <!-- Right Axis Labels (5 values) -->
       ${[0, 0.25, 0.5, 0.75, 1].map(ratio => {
-        const val = rightScale.max - (rightScale.max - rightScale.min) * ratio;
-        const y = padding.top + usableHeight * ratio;
-        return `<text x="${width - padding.right + 5}" y="${y}" font-size="8" fill="var(--text-muted)" text-anchor="start" alignment-baseline="middle">${val.toFixed(0)}</text>`;
-      }).join('')}
+    const val = rightScale.max - (rightScale.max - rightScale.min) * ratio;
+    const y = padding.top + usableHeight * ratio;
+    return `<text x="${width - padding.right + 5}" y="${y}" font-size="8" fill="var(--text-muted)" text-anchor="start" alignment-baseline="middle">${val.toFixed(0)}</text>`;
+  }).join('')}
       <text x="${width - padding.right + 5}" y="${padding.top - 12}" font-size="8" fill="var(--text-muted)" text-anchor="start" font-weight="bold">R (kg)</text>
       
       ${linesHtml}

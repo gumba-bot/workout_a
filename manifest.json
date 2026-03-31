@@ -1,6 +1,6 @@
 {
-  "name": "Workout Log",
-  "short_name": "Workout",
+  "name": "굼바의 운동일지",
+  "short_name": "운동일지",
   "description": "Personal workout tracking application",
   "start_url": "./index.html",
   "display": "standalone",
@@ -8,9 +8,9 @@
   "theme_color": "#0F172A",
   "icons": [
     {
-      "src": "icon.svg",
+      "src": "icon.png",
       "sizes": "192x192 512x512",
-      "type": "image/svg+xml",
+      "type": "image/png",
       "purpose": "any maskable"
     }
   ]
