@@ -1,6 +1,6 @@
 // --- Database Operations ---
 const DB_NAME = 'WorkoutLogDB';
-const DB_VERSION = 1;
+const DB_VERSION = 3; // Bumped to 3 to ensure InBody store creation for all users
 
 let dbInfo = { db: null };
 
@@ -26,6 +26,10 @@ async function initDB() {
       }
       if (!db.objectStoreNames.contains('workouts')) {
         db.createObjectStore('workouts', { keyPath: 'date' });
+      }
+      // Add InBody store (v2/v3 requirement)
+      if (!db.objectStoreNames.contains('inbody')) {
+        db.createObjectStore('inbody', { keyPath: 'date' });
       }
     };
   });
@@ -74,29 +78,57 @@ async function getAllRecords(storeName) {
 async function seedDefaults() {
   const exercises = await getAllRecords('exercises');
   if (exercises.length === 0) {
-    await addRecord('exercises', { name: '레그 컬', bodyPart: '하체', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '바벨 스쾃', bodyPart: '하체', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '벤치 프레스', bodyPart: '가슴', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '랫 풀 다운', bodyPart: '등', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '데드리프트', bodyPart: '등', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '레그 익스텐션', bodyPart: '하체', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '덤벨 컬', bodyPart: '이두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '해머 컬', bodyPart: '이두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '로프 케이블 푸시다운', bodyPart: '삼두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '시티드 익스텐션 머신(핀)', bodyPart: '삼두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '시티드 컬 머신(핀)', bodyPart: '이두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '바벨 로우', bodyPart: '등', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '바벨 스플릿 스쾃', bodyPart: '하체', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '카프 레이즈', bodyPart: '하체', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '인클라인 덤벨 프레스', bodyPart: '가슴', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '체스트 프레스(원판)', bodyPart: '가슴', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '케이블 컬', bodyPart: '이두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '딥스', bodyPart: '삼두', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '풀업', bodyPart: '등', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '암풀 다운', bodyPart: '등', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '밀리터리 프레스', bodyPart: '어깨', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '사이드 레터럴 레이즈', bodyPart: '어깨', defaultRestTime: 90 });
-    await addRecord('exercises', { name: '벤트 오버 레터럴 레이즈', bodyPart: '어깨', defaultRestTime: 90 });
+    const defaultExercises = [
+      { id: 1, name: '레그 컬', bodyPart: '하체', defaultRestTime: 90 },
+      { id: 2, name: '바벨 스쾃', bodyPart: '하체', defaultRestTime: 180 },
+      { id: 3, name: '벤치 프레스', bodyPart: '가슴', defaultRestTime: 180 },
+      { id: 4, name: '랫 풀 다운', bodyPart: '등', defaultRestTime: 90 },
+      { id: 5, name: '데드리프트', bodyPart: '등', defaultRestTime: 180 },
+      { id: 6, name: '레그 익스텐션', bodyPart: '하체', defaultRestTime: 90 },
+      { id: 7, name: '덤벨 컬', bodyPart: '이두', defaultRestTime: 90 },
+      { id: 8, name: '해머 컬', bodyPart: '이두', defaultRestTime: 90 },
+      { id: 9, name: '로프 케이블 푸시다운', bodyPart: '삼두', defaultRestTime: 90 },
+      { id: 10, name: '시티드 익스텐션 머신(핀)', bodyPart: '삼두', defaultRestTime: 90 },
+      { id: 11, name: '시티드 컬 머신(핀)', bodyPart: '이두', defaultRestTime: 90 },
+      { id: 12, name: '바벨 로우', bodyPart: '등', defaultRestTime: 90 },
+      { id: 13, name: '바벨 스플릿 스쾃', bodyPart: '하체', defaultRestTime: 90 },
+      { id: 14, name: '카프 레이즈', bodyPart: '하체', defaultRestTime: 90 },
+      { id: 15, name: '인클라인 덤벨 프레스', bodyPart: '가슴', defaultRestTime: 90 },
+      { id: 16, name: '체스트 프레스(원판)', bodyPart: '가슴', defaultRestTime: 90 },
+      { id: 17, name: '케이블 컬', bodyPart: '이두', defaultRestTime: 90 },
+      { id: 18, name: '딥스', bodyPart: '삼두', defaultRestTime: 90 },
+      { id: 19, name: '풀업', bodyPart: '등', defaultRestTime: 90 },
+      { id: 20, name: '암풀 다운', bodyPart: '등', defaultRestTime: 90 },
+      { id: 21, name: '밀리터리 프레스', bodyPart: '어깨', defaultRestTime: 90 },
+      { id: 22, name: '사이드 레터럴 레이즈', bodyPart: '어깨', defaultRestTime: 90 },
+      { id: 23, name: '벤트 오버 레터럴 레이즈', bodyPart: '어깨', defaultRestTime: 90 },
+      { id: 24, name: 'ITY 레이즈', bodyPart: '어깨', defaultRestTime: 90 },
+      { id: 25, name: '팔로프 프레스', bodyPart: '코어', defaultRestTime: 90 },
+      { id: 26, name: '캣-카우', bodyPart: '코어', defaultRestTime: 90 },
+      { id: 27, name: '숄더 브릿지 로테이션', bodyPart: '코어', defaultRestTime: 90 },
+      { id: 28, name: '스레드 더 니들', bodyPart: '코어', defaultRestTime: 90 },
+      { id: 29, name: '프론트 익스텐션', bodyPart: '코어', defaultRestTime: 90 },
+      { id: 30, name: '월 윈드밀', bodyPart: '코어', defaultRestTime: 90 },
+      { id: 31, name: '밴드 암풀 다운', bodyPart: '등', defaultRestTime: 90 },
+      { id: 32, name: '시티드 로우', bodyPart: '등', defaultRestTime: 90 }
+    ];
+    for (const ex of defaultExercises) {
+      await addRecord('exercises', ex);
+    }
+  }
+
+  const groups = await getAllRecords('groups');
+  if (groups.length === 0) {
+    const defaultGroups = [
+      { id: 1, name: '하체', exerciseIds: [2, 13, 1, 6, 14, 25] },
+      { id: 2, name: '어깨', exerciseIds: [21] },
+      { id: 3, name: '등', exerciseIds: [19, 5, 12, 32, 31] },
+      { id: 4, name: '가슴/팔', exerciseIds: [3, 15, 18, 8, 11, 10, 24] },
+      { id: 5, name: '흉추 가동성', exerciseIds: [26, 30, 27, 28, 29] }
+    ];
+    for (const g of defaultGroups) {
+      await addRecord('groups', g);
+    }
   }
 }
 // --- End Database Operations ---
@@ -138,7 +170,7 @@ let state = {
   fiveThreeOneRms: JSON.parse(localStorage.getItem('fiveThreeOneRms')) || { squat: 0, deadlift: 0, bench: 0, ohp: 0 },
   fiveThreeOneOption: localStorage.getItem('fiveThreeOneOption') || 'A', // A: 4주, B: 7주
 
-  // 1RM Estimator state
+  inbodyRecords: [], // { date, height, weight, skeletalMuscle, bodyFatMass, bodyFatPercent, bmi, score }
   oneRmInput: JSON.parse(localStorage.getItem('oneRmInput')) || { weight: 0, reps: 0 }
 };
 
@@ -270,6 +302,8 @@ async function loadData() {
   await seedDefaults();
   state.exercises = await getAllRecords('exercises');
   state.groups = await getAllRecords('groups');
+  state.inbodyRecords = await getAllRecords('inbody');
+  state.inbodyRecords.sort((a, b) => b.date.localeCompare(a.date)); // Newest first by default
   const allWorkouts = await getAllRecords('workouts');
   allWorkouts.forEach(w => {
     state.workouts[w.date] = w;
@@ -309,6 +343,8 @@ function render() {
   else if (state.view === 'tutorial') renderTutorial();
   else if (state.view === 'five-three-one') renderFiveThreeOne();
   else if (state.view === 'one-rm-calculator') renderOneRmCalculator();
+  else if (state.view === 'inbody-list') renderInBodyList();
+  else if (state.view === 'add-inbody') renderAddInBody();
 
   setTimeout(autoFitText, 0); // Allow DOM to paint before measuring
 }
@@ -467,6 +503,9 @@ function renderSettings() {
             <button class="btn btn-secondary" id="openOneRmCalcBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
               <i class="ph ph-target" style="font-size: 1.2rem; min-width: 24px;"></i> 1RM 추정
             </button>
+            <button class="btn btn-secondary" id="openInBodyBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
+              <i class="ph ph-heartbeat" style="font-size: 1.2rem; min-width: 24px;"></i> 인바디 기록 관리
+            </button>
             <button class="btn btn-secondary" id="openWorkoutReportBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem;">
               <i class="ph ph-chart-bar" style="font-size: 1.2rem; min-width: 24px;"></i> 종합 운동 리포트
             </button>
@@ -533,6 +572,9 @@ function renderSettings() {
   });
   document.getElementById('openOneRmCalcBtn').addEventListener('click', () => {
     navigateTo('one-rm-calculator');
+  });
+  document.getElementById('openInBodyBtn').addEventListener('click', () => {
+    navigateTo('inbody-list');
   });
   document.getElementById('openWorkoutReportBtn').addEventListener('click', () => {
     navigateTo('workout-report', { reportDate: toDateStr(new Date()) });
@@ -2366,7 +2408,7 @@ function renderTutorial() {
         </h3>
         <p style="color: var(--text-secondary); margin: 0;">
           첫 화면의 달력에서 날짜를 선택한 뒤 <b>[새로운 루틴 시작]</b>을 누르면 해당 날짜의 운동 목록으로 이동합니다.<br><br>
-          우측 하단의 <b>[종목 추가]</b>를 눌러 평소 하시는 운동을 직접 선택하거나, 나만의 운동 그룹을 간편하게 앱에 불러올 수 있습니다.
+          <b>이미 32개의 필수 종목과 5개의 부위별 그룹</b>이 기본으로 등록되어 있어, 바로 운동을 시작하거나 나만의 그룹을 만들어 관리할 수 있습니다.
         </p>
       </div>
 
@@ -2400,12 +2442,32 @@ function renderTutorial() {
         </p>
       </div>
       
-      <div class="glass-panel" style="padding: 16px; margin-bottom: 30px;">
+      <div class="glass-panel" style="padding: 16px; margin-bottom: 20px;">
         <h3 style="color: var(--accent-primary); margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
-          <i class="ph-fill ph-floppy-disk" style="flex-shrink:0;"></i> 5. 기기 변경 시 백업 및 복원
+          <i class="ph-fill ph-calculator" style="flex-shrink:0;"></i> 5. 5/3/1 계산기 및 진행 상황 저장
         </h3>
         <p style="color: var(--text-secondary); margin: 0;">
-          앱의 모든 근성장 기록은 현재 사용하는 브라우저 상에 안전하게 저장됩니다. 기기를 변경하거나 앱을 재설치할 상황을 대비하여 기기 변경 전 <b>[데이터 백업]</b>을 미리 사용해두세요.
+          S, D, B, O의 1RM을 입력하면 일주일 단위의 체계적인 훈련 중량이 계산됩니다.<br><br>
+          입력한 1RM과 선택한 디로딩 옵션은 <b>브라우저에 안전하게 저장</b>되어, 앱을 재시작해도 내 진행 상황을 그대로 이어갈 수 있습니다.
+        </p>
+      </div>
+
+      <div class="glass-panel" style="padding: 16px; margin-bottom: 20px;">
+        <h3 style="color: var(--accent-primary); margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph-fill ph-clock-counter-clockwise" style="flex-shrink:0;"></i> 6. 종목별 맞춤 휴식 시간
+        </h3>
+        <p style="color: var(--text-secondary); margin: 0;">
+          이제 종목마다 서로 다른 휴식 시간을 가질 수 있습니다.<br><br>
+          운동 중 수행 화면에서 휴식 시간을 수정하면 해당 종목의 <b>기본 설정</b>으로 저장되어, 다음번에 같은 운동을 할 때도 내가 설정한 맞춤 시간이 적용됩니다.
+        </p>
+      </div>
+
+      <div class="glass-panel" style="padding: 16px; margin-bottom: 30px;">
+        <h3 style="color: var(--accent-primary); margin-bottom: 12px; font-size: 1.1rem; display: flex; align-items: center; gap: 8px;">
+          <i class="ph-fill ph-floppy-disk" style="flex-shrink:0;"></i> 7. 기기 변경 시 백업 및 복원
+        </h3>
+        <p style="color: var(--text-secondary); margin: 0;">
+          앱의 모든 기록은 브라우저 상에 안전하게 저장됩니다. 기기를 변경할 상황을 대비하여 설정에서 <b>[데이터 백업]</b> 파일을 다운로드해 두면, 새 기기에서 간편하게 복원할 수 있습니다.
         </p>
       </div>
 
@@ -2612,6 +2674,7 @@ function renderFiveThreeOne() {
     state.fiveThreeOneRms.deadlift = (state.fiveThreeOneRms.deadlift || 0) + 2.5;
     state.fiveThreeOneRms.bench = (state.fiveThreeOneRms.bench || 0) + 2.5;
     state.fiveThreeOneRms.ohp = (state.fiveThreeOneRms.ohp || 0) + 2.5;
+    localStorage.setItem('fiveThreeOneRms', JSON.stringify(state.fiveThreeOneRms));
     renderFiveThreeOne();
   });
 
@@ -2622,6 +2685,7 @@ function renderFiveThreeOne() {
       if (id === 'rmDead') state.fiveThreeOneRms.deadlift = val;
       if (id === 'rmBench') state.fiveThreeOneRms.bench = val;
       if (id === 'rmOhp') state.fiveThreeOneRms.ohp = val;
+      localStorage.setItem('fiveThreeOneRms', JSON.stringify(state.fiveThreeOneRms));
 
       // Update results without full re-render to preserve focus
       const resultsEl = document.getElementById('calcResults');
@@ -2655,6 +2719,7 @@ function renderFiveThreeOne() {
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       state.fiveThreeOneOption = e.target.getAttribute('data-opt');
+      localStorage.setItem('fiveThreeOneOption', state.fiveThreeOneOption);
       renderFiveThreeOne();
     });
   });
@@ -2823,5 +2888,333 @@ function renderOneRmCalculator() {
   setTimeout(autoFitText, 0);
 }
 
+// 14. InBody Views
+function getBmiCategory(bmi) {
+  if (bmi < 18.5) return { text: '표준 이하', color: 'var(--accent-primary)' };
+  if (bmi < 25) return { text: '표준', color: 'var(--success)' };
+  return { text: '표준 이상', color: 'var(--danger)' };
+}
+
+function renderAddInBody() {
+  const today = formatDate(new Date());
+  // Try to find previous height
+  const lastHeight = state.inbodyRecords.length > 0 ? state.inbodyRecords[0].height : 175;
+
+  appEl.innerHTML = `
+    <header>
+      <button class="icon-btn" id="cancelInBodyBtn"><i class="ph ph-arrow-left"></i></button>
+      <h1>인바디 기록 추가</h1>
+      <button class="icon-btn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i></button>
+    </header>
+    <main>
+      <div class="glass-panel" style="padding: 20px; margin-top: 15px;">
+        <div class="form-group">
+          <label>측정 일자</label>
+          <input type="date" id="inbodyDate" class="form-control" value="${today}">
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group">
+            <label>신장 (cm)</label>
+            <input type="number" id="inbodyHeight" class="form-control" value="${lastHeight}" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>체중 (kg)</label>
+            <input type="number" id="inbodyWeight" class="form-control" placeholder="0.0" step="0.1">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group">
+            <label>골격근량 (kg)</label>
+            <input type="number" id="inbodyMuscle" class="form-control" placeholder="0.0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>체지방량 (kg)</label>
+            <input type="number" id="inbodyFat" class="form-control" placeholder="0.0" step="0.1">
+          </div>
+        </div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+          <div class="form-group">
+            <label>체지방률 (%)</label>
+            <input type="number" id="inbodyFatPct" class="form-control" placeholder="0.0" step="0.1">
+          </div>
+          <div class="form-group">
+            <label>인바디 점수 (점)</label>
+            <input type="number" id="inbodyScore" class="form-control" placeholder="0" step="1">
+          </div>
+        </div>
+
+        <div id="bmiPreview" style="margin: 20px 0; padding: 15px; border-radius: 12px; background: rgba(var(--accent-primary-rgb), 0.1); text-align: center; display: none;">
+          <div style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 4px;">예상 BMI</div>
+          <div id="bmiValText" style="font-size: 1.8rem; font-weight: 800; color: var(--accent-primary);">0.0</div>
+          <div id="bmiCatText" style="font-size: 1rem; font-weight: 600; margin-top: 4px;">판정중...</div>
+        </div>
+
+        <button class="btn btn-primary" id="saveInBodyBtn" style="margin-top: 10px; width: 100%;">저장하기</button>
+      </div>
+    </main>
+  `;
+
+  const weightIn = document.getElementById('inbodyWeight');
+  const heightIn = document.getElementById('inbodyHeight');
+  const preview = document.getElementById('bmiPreview');
+
+  const updateBmi = () => {
+    const w = parseFloat(weightIn.value);
+    const h = parseFloat(heightIn.value) / 100;
+    if (w > 0 && h > 0) {
+      const bmi = w / (h * h);
+      const cat = getBmiCategory(bmi);
+      preview.style.display = 'block';
+      document.getElementById('bmiValText').innerText = bmi.toFixed(1);
+      document.getElementById('bmiCatText').innerText = cat.text;
+      document.getElementById('bmiCatText').style.color = cat.color;
+    } else {
+      preview.style.display = 'none';
+    }
+  };
+
+  weightIn.addEventListener('input', updateBmi);
+  heightIn.addEventListener('input', updateBmi);
+
+  document.getElementById('cancelInBodyBtn').addEventListener('click', () => {
+    navigateTo('inbody-list');
+  });
+
+  document.getElementById('saveInBodyBtn').addEventListener('click', async () => {
+    const date = document.getElementById('inbodyDate').value;
+    const height = parseFloat(document.getElementById('inbodyHeight').value);
+    const weight = parseFloat(document.getElementById('inbodyWeight').value);
+    const skeletalMuscle = parseFloat(document.getElementById('inbodyMuscle').value);
+    const bodyFatMass = parseFloat(document.getElementById('inbodyFat').value);
+    const bodyFatPercent = parseFloat(document.getElementById('inbodyFatPct').value);
+    const score = parseInt(document.getElementById('inbodyScore').value) || 0;
+
+    if (!date || !weight || !height) {
+      alert("날짜, 신장, 체중은 필수 입력 항목입니다.");
+      return;
+    }
+
+    const hM = height / 100;
+    const bmi = weight / (hM * hM);
+
+    const record = { date, height, weight, skeletalMuscle, bodyFatMass, bodyFatPercent, bmi, score };
+    await putRecord('inbody', record);
+    state.inbodyRecords = await getAllRecords('inbody');
+    state.inbodyRecords.sort((a, b) => b.date.localeCompare(a.date));
+    navigateTo('inbody-list');
+  });
+}
+
+function renderInBodyList() {
+  const records = [...state.inbodyRecords].sort((a, b) => b.date.localeCompare(a.date));
+
+  let listHtml = '';
+  if (records.length === 0) {
+    listHtml = `<div class="info-text">측정 기록이 없습니다. 새로운 기록을 추가해보세요.</div>`;
+  } else {
+    records.forEach((rec, idx) => {
+      const prev = records[idx + 1]; // Older record
+      const cat = getBmiCategory(rec.bmi);
+
+      const getDeltaHtml = (curr, prevVal, key) => {
+        if (!prevVal) return '';
+        const delta = curr - prevVal;
+
+        // Color logic based on field type
+        // Weight, Muscle, Score: Increase(+) is Green, Decrease(-) is Red
+        // Fat Mass, Fat Pct, BMI: Increase(+) is Red, Decrease(-) is Green
+        const positiveFields = ['weight', 'skeletalMuscle', 'score'];
+        const negativeFields = ['bodyFatMass', 'bodyFatPercent', 'bmi'];
+
+        let color;
+        if (positiveFields.includes(key)) {
+          color = delta > 0 ? 'var(--success)' : (delta < 0 ? 'var(--danger)' : 'var(--text-muted)');
+        } else {
+          color = delta > 0 ? 'var(--danger)' : (delta < 0 ? 'var(--success)' : 'var(--text-muted)');
+        }
+
+        const sign = delta > 0 ? '+' : '';
+        return `<span style="font-size: 0.8rem; color: ${color}; margin-left: 6px; font-weight: 600;">(${sign}${delta.toFixed(1)})</span>`;
+      };
+
+      listHtml += `
+        <div class="glass-panel" style="padding: 16px; margin-bottom: 12px; position: relative;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
+            <div style="font-weight: 700; color: var(--text-primary); font-size: 1rem;">
+              <i class="ph ph-calendar-blank"></i> ${rec.date}
+            </div>
+            <div style="font-size: 0.85rem; padding: 4px 10px; border-radius: 12px; background: rgba(var(--accent-primary-rgb), 0.1); color: ${cat.color}; font-weight: 700;">
+              ${cat.text}
+            </div>
+          </div>
+          
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 0.95rem;">
+            <div style="color: var(--text-secondary);">체중: <span style="color: var(--text-primary); font-weight: 600;">${rec.weight}kg</span>${getDeltaHtml(rec.weight, prev ? prev.weight : null, 'weight')}</div>
+            <div style="color: var(--text-secondary);">BMI: <span style="color: var(--text-primary); font-weight: 600;">${rec.bmi.toFixed(1)}</span>${getDeltaHtml(rec.bmi, prev ? prev.bmi : null, 'bmi')}</div>
+            <div style="color: var(--text-secondary);">골격근: <span style="color: var(--text-primary); font-weight: 600;">${rec.skeletalMuscle || 0}kg</span>${getDeltaHtml(rec.skeletalMuscle, prev ? prev.skeletalMuscle : null, 'skeletalMuscle')}</div>
+            <div style="color: var(--text-secondary);">체지방: <span style="color: var(--text-primary); font-weight: 600;">${rec.bodyFatMass || 0}kg</span>${getDeltaHtml(rec.bodyFatMass, prev ? prev.bodyFatMass : null, 'bodyFatMass')}</div>
+            <div style="color: var(--text-secondary);">지방률: <span style="color: var(--text-primary); font-weight: 600;">${rec.bodyFatPercent || 0}%</span>${getDeltaHtml(rec.bodyFatPercent, prev ? prev.bodyFatPercent : null, 'bodyFatPercent')}</div>
+            <div style="color: var(--text-secondary);">점수: <span style="color: var(--text-primary); font-weight: 600;">${rec.score || 0}점</span>${getDeltaHtml(rec.score, prev ? prev.score : null, 'score')}</div>
+          </div>
+          <button class="icon-btn delete-inbody-btn" data-date="${rec.date}" style="position: absolute; bottom: 10px; right: 10px; opacity: 0.5;"><i class="ph ph-trash"></i></button>
+        </div>
+      `;
+    });
+  }
+
+  appEl.innerHTML = `
+    <header>
+      <button class="icon-btn" id="inbodyBackBtn"><i class="ph ph-arrow-left"></i></button>
+      <h1>인바디 기록</h1>
+      <button class="icon-btn" style="visibility: hidden;"><i class="ph ph-arrow-left"></i></button>
+    </header>
+    <main>
+      ${records.length >= 2 ? `
+        <div class="glass-panel" style="padding: 16px; margin-bottom: 20px;">
+          <h3 style="margin: 0 0 12px 0; font-size: 0.95rem; color: var(--accent-primary);">체성분 추이 그래프</h3>
+          <div id="inbodyGraphContainer" style="height: 220px; width: 100%;"></div>
+          <div style="display: flex; justify-content: center; gap: 15px; margin-top: 15px; font-size: 0.75rem;">
+            <span style="display:flex; align-items:center; gap:4px;"><i class="ph-fill ph-circle" style="color:hsl(var(--accent-hue), 80%, 60%);"></i> 체중</span>
+            <span style="display:flex; align-items:center; gap:4px;"><i class="ph-fill ph-circle" style="color:var(--success);"></i> 골격근</span>
+            <span style="display:flex; align-items:center; gap:4px;"><i class="ph-fill ph-circle" style="color:var(--danger);"></i> 체지방</span>
+          </div>
+        </div>
+      ` : ''}
+      
+      <div style="display: flex; flex-direction: column; padding-bottom: 80px;">
+        ${listHtml}
+      </div>
+
+      <button class="fab" id="addInBodyFab" style="bottom: 20px; right: 20px;">
+        <i class="ph-bold ph-plus"></i>
+      </button>
+    </main>
+  `;
+
+  document.getElementById('inbodyBackBtn').addEventListener('click', () => {
+    navigateTo('settings');
+  });
+
+  document.getElementById('addInBodyFab').addEventListener('click', () => {
+    navigateTo('add-inbody');
+  });
+
+  document.querySelectorAll('.delete-inbody-btn').forEach(btn => {
+    btn.addEventListener('click', async (e) => {
+      const date = e.currentTarget.getAttribute('data-date');
+      if (confirm(`${date} 기록을 삭제하시겠습니까?`)) {
+        const tx = dbInfo.db.transaction(['inbody'], 'readwrite');
+        tx.objectStore('inbody').delete(date);
+        tx.oncomplete = async () => {
+          state.inbodyRecords = await getAllRecords('inbody');
+          state.inbodyRecords.sort((a, b) => b.date.localeCompare(a.date));
+          renderInBodyList();
+        };
+      }
+    });
+  });
+
+  if (records.length >= 2) {
+    renderInBodyGraph('inbodyGraphContainer', [...records].reverse());
+  }
+}
+
+function renderInBodyGraph(containerId, records) {
+  const container = document.getElementById(containerId);
+  if (!container) return;
+
+  const width = container.clientWidth;
+  const height = container.clientHeight;
+  const padding = { top: 20, right: 35, bottom: 25, left: 35 };
+
+  const usableWidth = width - padding.left - padding.right;
+  const usableHeight = height - padding.top - padding.bottom;
+
+  // Split keys by 50 threshold rule
+  // Left Axis: Values >= 50
+  // Right Axis: Values < 50
+  const allPlotKeys = ['weight', 'skeletalMuscle', 'bodyFatMass'];
+  const leftKeys = allPlotKeys.filter(k => (records[0][k] || 0) >= 50);
+  const rightKeys = allPlotKeys.filter(k => (records[0][k] || 0) < 50);
+
+  const getMinMax = (keys) => {
+    const vals = records.flatMap(r => keys.map(k => r[k] || 0)).filter(v => v !== 0);
+    if (vals.length === 0) return { min: 0, max: 100 };
+    const min = Math.min(...vals);
+    const max = Math.max(...vals);
+    const margin = (max - min) * 0.15 || 10;
+    return { min: Math.max(0, min - margin), max: max + margin };
+  };
+
+  const leftScale = getMinMax(leftKeys);
+  const rightScale = getMinMax(rightKeys);
+
+  const getX = (idx) => padding.left + (idx / (records.length - 1)) * usableWidth;
+  const getY = (val, scale) => {
+    const range = scale.max - scale.min || 1;
+    return padding.top + usableHeight - ((val - scale.min) / range) * usableHeight;
+  };
+
+  // Helper for colors based on theme
+  const hue = getComputedStyle(document.documentElement).getPropertyValue('--accent-hue').trim() || '220';
+  const colors = {
+    weight: `hsl(${hue}, 80%, 60%)`,
+    score: `hsl(${hue}, 40%, 75%)`,
+    skeletalMuscle: 'var(--success)',
+    bodyFatMass: 'var(--danger)',
+    bodyFatPercent: 'var(--warning)'
+  };
+
+  const drawLine = (key, scale) => {
+    const color = colors[key];
+    let path = `M ${getX(0)} ${getY(records[0][key] || 0, scale)}`;
+    let points = '';
+    records.forEach((r, i) => {
+      const x = getX(i);
+      const y = getY(r[key] || 0, scale);
+      if (i > 0) path += ` L ${x} ${y}`;
+      points += `<circle cx="${x}" cy="${y}" r="3.5" fill="var(--bg-card)" stroke="${color}" stroke-width="1.5" />`;
+    });
+    return `
+      <path d="${path}" fill="none" stroke="${color}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" />
+      ${points}
+    `;
+  };
+
+  let linesHtml = '';
+  leftKeys.forEach(k => linesHtml += drawLine(k, leftScale));
+  rightKeys.forEach(k => linesHtml += drawLine(k, rightScale));
+
+  // Grid Lines (based on left scale for consistency)
+  let gridHtml = '';
+  for (let i = 0; i <= 4; i++) {
+    const y = padding.top + (usableHeight / 4) * i;
+    gridHtml += `<line x1="${padding.left}" y1="${y}" x2="${width - padding.right}" y2="${y}" stroke="var(--border-color)" stroke-width="0.5" stroke-dasharray="4 4" />`;
+  }
+
+  container.innerHTML = `
+    <svg width="${width}" height="${height}" style="overflow: visible; font-family: inherit;">
+      ${gridHtml}
+      
+      <!-- Left Axis Labels (5 values) -->
+      ${[0, 0.25, 0.5, 0.75, 1].map(ratio => {
+        const val = leftScale.max - (leftScale.max - leftScale.min) * ratio;
+        const y = padding.top + usableHeight * ratio;
+        return `<text x="${padding.left - 5}" y="${y}" font-size="8" fill="var(--text-muted)" text-anchor="end" alignment-baseline="middle">${val.toFixed(0)}</text>`;
+      }).join('')}
+      <text x="${padding.left - 5}" y="${padding.top - 12}" font-size="8" fill="var(--text-muted)" text-anchor="end" font-weight="bold">L (kg)</text>
+
+      <!-- Right Axis Labels (5 values) -->
+      ${[0, 0.25, 0.5, 0.75, 1].map(ratio => {
+        const val = rightScale.max - (rightScale.max - rightScale.min) * ratio;
+        const y = padding.top + usableHeight * ratio;
+        return `<text x="${width - padding.right + 5}" y="${y}" font-size="8" fill="var(--text-muted)" text-anchor="start" alignment-baseline="middle">${val.toFixed(0)}</text>`;
+      }).join('')}
+      <text x="${width - padding.right + 5}" y="${padding.top - 12}" font-size="8" fill="var(--text-muted)" text-anchor="start" font-weight="bold">R (kg)</text>
+      
+      ${linesHtml}
+    </svg>
+  `;
+}
 // Start
 startApp();
