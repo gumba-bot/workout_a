@@ -135,17 +135,42 @@ async function seedDefaults() {
 
 function requestNotificationPermission() {
   if (!("Notification" in window)) {
-    alert("이 브라우저는 알림 기능을 지원하지 않습니다.");
+    alert("이 브라우저는 알림 기능을 지원하지 않습니다.\n(iOS 사용자의 경우 '홈 화면에 추가'를 통해 앱을 설치한 뒤 시도해 주세요.)");
     return;
   }
-  Notification.requestPermission().then(permission => {
-    if (permission === "granted") {
-      alert("알림 권한이 허용되었습니다!");
-    } else {
-      alert("알림 권한이 거부되었습니다. 설정에서 수동으로 허용해야 합니다.");
-    }
+
+  if (Notification.permission === 'granted') {
+    alert("이미 알림 권한이 허용되어 있습니다.");
     renderSettings();
-  });
+    return;
+  }
+
+  if (Notification.permission === 'denied') {
+    alert("알림 권한이 이미 '거부'되어 있어 팝업이 뜨지 않습니다.\n브라우저 설정(주소창 옆 아이콘 또는 브라우저 설정 메뉴)에서 알림 권한을 직접 '허용'으로 변경해 주세요.");
+    return;
+  }
+
+  // 권한 요청 (Promise 및 Callback 방식 모두 지원)
+  try {
+    Notification.requestPermission().then(permission => {
+      if (permission === "granted") {
+        alert("알림 권한이 허용되었습니다!");
+      } else {
+        alert("알림 권한이 허용되지 않았습니다.");
+      }
+      renderSettings();
+    });
+  } catch (e) {
+    // 구형 Safari 등 Promise 미지원 환경 대응
+    Notification.requestPermission(permission => {
+      if (permission === "granted") {
+        alert("알림 권한이 허용되었습니다!");
+      } else {
+        alert("알림 권한이 허용되지 않았습니다.");
+      }
+      renderSettings();
+    });
+  }
 }
 
 function applyTheme() {
