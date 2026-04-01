@@ -133,33 +133,6 @@ async function seedDefaults() {
 }
 // --- End Database Operations ---
 
-function updateAppIcon() {
-  const isAdmin = localStorage.getItem('isAdmin') === 'true';
-  const t = new Date().getTime();
-  const iconUrl = isAdmin ? `icon.png?t=${t}` : `icon.svg?t=${t}`;
-  const iconType = isAdmin ? 'image/png' : 'image/svg+xml';
-
-  const replaceLink = (id, rel, href, type) => {
-    const oldLink = document.getElementById(id);
-    if (oldLink) oldLink.remove();
-    const newLink = document.createElement('link');
-    newLink.id = id;
-    newLink.rel = rel;
-    newLink.href = href;
-    if (type) newLink.type = type;
-    document.head.appendChild(newLink);
-  };
-
-  replaceLink('favicon', 'icon', iconUrl, iconType);
-  
-  // iOS Safari는 apple-touch-icon으로 SVG를 지원하지 않으므로, 
-  // 관리자 모드가 아닐 때도 PNG를 사용할지 결정해야 합니다.
-  // 여기서는 사용자 요청에 따라 SVG로 전환을 시도하되, PNG 백업 경로(index.html 기본값)를 고려합니다.
-  const appleUrl = isAdmin ? `icon.png?t=${t}` : `icon.png?t=${t}`; 
-  // 호환성을 위해 apple-icon은 가급적 PNG를 유지하되, 관리자 상태에 따라 캐시를 갱신합니다.
-  replaceLink('apple-icon', 'apple-touch-icon', appleUrl);
-}
-
 function requestNotificationPermission() {
   if (!("Notification" in window)) {
     alert("이 브라우저는 알림 기능을 지원하지 않습니다.");
@@ -180,7 +153,6 @@ function applyTheme() {
   const color = localStorage.getItem('themeColor') || 'blue';
   document.documentElement.setAttribute('data-theme', mode);
   document.documentElement.setAttribute('data-color', color);
-  updateAppIcon();
 }
 applyTheme();
 
@@ -569,12 +541,6 @@ function renderSettings() {
           </div>
         </div>
         <div class="settings-section">
-          <div class="settings-title">관리자 설정</div>
-          <div style="display: flex; gap: 8px;">
-            <input type="password" id="adminCodeInput" placeholder="관리자 번호 입력" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-primary); font-family: inherit;" value="${localStorage.getItem('adminInput') || ''}">
-          </div>
-        </div>
-        <div class="settings-section">
           <div class="settings-title">알림 및 소리</div>
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -596,12 +562,6 @@ function renderSettings() {
               * 백그라운드 알림을 위해 '홈 화면에 추가'하여 사용하는 것이 권장됩니다.
             </p>
           </div>
-        </div>
-        <div class="settings-section" style="border-bottom: none;">
-          <div class="settings-title">앱 정보</div>
-          <button class="btn btn-secondary" id="openTutorialBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem; width: 100%;">
-            <i class="ph ph-info" style="font-size: 1.2rem; min-width: 24px;"></i> 앱 사용 튜토리얼
-          </button>
         </div>
       </div>
     </main>
@@ -655,17 +615,6 @@ function renderSettings() {
     navigateTo('exercise-report-list');
   });
 
-  const adminInput = document.getElementById('adminCodeInput');
-  adminInput.addEventListener('input', (e) => {
-    const val = e.target.value;
-    localStorage.setItem('adminInput', val);
-    if (val === '010301') {
-      localStorage.setItem('isAdmin', 'true');
-    } else {
-      localStorage.setItem('isAdmin', 'false');
-    }
-    updateAppIcon();
-  });
 
   const requestNotiBtn = document.getElementById('requestNotiPermBtn');
   if (requestNotiBtn) {
@@ -1827,8 +1776,6 @@ function playTimerEndNotification() {
   const title = "휴식 종료";
   const options = {
     body: "휴식시간이 끝났습니다! 다음 세트를 준비하세요.",
-    icon: "icon.png",
-    badge: "icon.png",
     vibrate: [200, 100, 200],
     tag: "rest-timer-notification",
     renotify: true

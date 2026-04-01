@@ -1,10 +1,9 @@
-const CACHE_NAME = 'workout-log-cache-v3';
+const CACHE_NAME = 'workout-log-cache-v4';
 const urlsToCache = [
   './',
   './index.html',
   './app.js',
   './styles.css',
-  './icon.png',
   './icon.svg'
 ];
 
