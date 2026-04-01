@@ -135,19 +135,44 @@ async function seedDefaults() {
 
 function updateAppIcon() {
   const isAdmin = localStorage.getItem('isAdmin') === 'true';
-  const iconUrl = isAdmin ? 'icon.png' : 'icon.svg';
+  const t = new Date().getTime();
+  const iconUrl = isAdmin ? `icon.png?t=${t}` : `icon.svg?t=${t}`;
   const iconType = isAdmin ? 'image/png' : 'image/svg+xml';
 
-  const favicon = document.querySelector('link[rel="icon"]');
-  if (favicon) {
-    favicon.href = iconUrl;
-    favicon.type = iconType;
-  }
+  const replaceLink = (id, rel, href, type) => {
+    const oldLink = document.getElementById(id);
+    if (oldLink) oldLink.remove();
+    const newLink = document.createElement('link');
+    newLink.id = id;
+    newLink.rel = rel;
+    newLink.href = href;
+    if (type) newLink.type = type;
+    document.head.appendChild(newLink);
+  };
 
-  const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
-  if (appleIcon) {
-    appleIcon.href = iconUrl;
+  replaceLink('favicon', 'icon', iconUrl, iconType);
+  
+  // iOS Safari는 apple-touch-icon으로 SVG를 지원하지 않으므로, 
+  // 관리자 모드가 아닐 때도 PNG를 사용할지 결정해야 합니다.
+  // 여기서는 사용자 요청에 따라 SVG로 전환을 시도하되, PNG 백업 경로(index.html 기본값)를 고려합니다.
+  const appleUrl = isAdmin ? `icon.png?t=${t}` : `icon.png?t=${t}`; 
+  // 호환성을 위해 apple-icon은 가급적 PNG를 유지하되, 관리자 상태에 따라 캐시를 갱신합니다.
+  replaceLink('apple-icon', 'apple-touch-icon', appleUrl);
+}
+
+function requestNotificationPermission() {
+  if (!("Notification" in window)) {
+    alert("이 브라우저는 알림 기능을 지원하지 않습니다.");
+    return;
   }
+  Notification.requestPermission().then(permission => {
+    if (permission === "granted") {
+      alert("알림 권한이 허용되었습니다!");
+    } else {
+      alert("알림 권한이 거부되었습니다. 설정에서 수동으로 허용해야 합니다.");
+    }
+    renderSettings();
+  });
 }
 
 function applyTheme() {
@@ -549,6 +574,29 @@ function renderSettings() {
             <input type="password" id="adminCodeInput" placeholder="관리자 번호 입력" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-primary); font-family: inherit;" value="${localStorage.getItem('adminInput') || ''}">
           </div>
         </div>
+        <div class="settings-section">
+          <div class="settings-title">알림 및 소리</div>
+          <div style="display: flex; flex-direction: column; gap: 8px;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+              <span style="font-size: 0.9rem; color: var(--text-primary);">알림 권한 상태</span>
+              <span style="font-size: 0.85rem; font-weight: bold; color: ${Notification.permission === 'granted' ? 'var(--success)' : 'var(--danger)'}">
+                ${Notification.permission === 'granted' ? '허용됨' : (Notification.permission === 'denied' ? '거부됨' : '미정')}
+              </span>
+            </div>
+            ${Notification.permission !== 'granted' ? `
+              <button class="btn btn-secondary" id="requestNotiPermBtn" style="padding: 10px; font-size: 0.9rem;">
+                알림 권한 요청하기
+              </button>
+            ` : ''}
+            <button class="btn btn-secondary" id="testNotiBtn" style="padding: 10px; font-size: 0.9rem;">
+              알림 및 비프음 테스트
+            </button>
+            <p style="font-size: 0.75rem; color: var(--text-muted); margin: 4px 0 0 0; line-height: 1.4;">
+              * 모바일에서 소리가 나지 않을 경우 기기의 무음 모드를 해제해 주세요.<br>
+              * 백그라운드 알림을 위해 '홈 화면에 추가'하여 사용하는 것이 권장됩니다.
+            </p>
+          </div>
+        </div>
         <div class="settings-section" style="border-bottom: none;">
           <div class="settings-title">앱 정보</div>
           <button class="btn btn-secondary" id="openTutorialBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem; width: 100%;">
@@ -617,6 +665,18 @@ function renderSettings() {
       localStorage.setItem('isAdmin', 'false');
     }
     updateAppIcon();
+  });
+
+  const requestNotiBtn = document.getElementById('requestNotiPermBtn');
+  if (requestNotiBtn) {
+    requestNotiBtn.addEventListener('click', () => {
+      requestNotificationPermission();
+    });
+  }
+
+  document.getElementById('testNotiBtn').addEventListener('click', () => {
+    initAudio();
+    playTimerEndNotification();
   });
 }
 
@@ -1764,13 +1824,28 @@ function playTimerEndNotification() {
     }
   }
 
-  if ("Notification" in window && Notification.permission === "granted") {
-    new Notification("휴식 종료", { body: "휴식시간이 끝났습니다! 다음 세트를 준비하세요." });
+  const title = "휴식 종료";
+  const options = {
+    body: "휴식시간이 끝났습니다! 다음 세트를 준비하세요.",
+    icon: "icon.png",
+    badge: "icon.png",
+    vibrate: [200, 100, 200],
+    tag: "rest-timer-notification",
+    renotify: true
+  };
+
+  if ('serviceWorker' in navigator && Notification.permission === 'granted') {
+    navigator.serviceWorker.getRegistration().then(reg => {
+      if (reg) reg.showNotification(title, options);
+      else if ("Notification" in window) new Notification(title, options);
+    });
+  } else if ("Notification" in window && Notification.permission === "granted") {
+    new Notification(title, options);
   }
 
   setTimeout(() => {
-    alert("휴식시간이 끝났습니다!");
-  }, 100);
+    alert("🔔 휴식시간이 끝났습니다!\n다음 세트를 시작하세요.");
+  }, 200);
 }
 
 function handleTimerTick() {
