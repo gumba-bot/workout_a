@@ -133,43 +133,65 @@ async function seedDefaults() {
 }
 // --- End Database Operations ---
 
-function requestNotificationPermission() {
+async function requestNotificationPermission() {
   if (!("Notification" in window)) {
-    alert("이 브라우저는 알림 기능을 지원하지 않습니다.\n(iOS 사용자의 경우 '홈 화면에 추가'를 통해 앱을 설치한 뒤 시도해 주세요.)");
-    return;
+    // Some mobile browsers might not have Notification but have serviceWorker and showNotification
+    if (!('serviceWorker' in navigator)) {
+      alert("이 브라우저는 알림 기능을 지원하지 않습니다.\n(iOS 사용자의 경우 '홈 화면에 추가'를 통해 앱을 설치한 뒤 시도해 주세요.)");
+      return;
+    }
   }
 
-  if (Notification.permission === 'granted') {
+  // Ensure Service Worker is ready before asking for permission on mobile
+  if ('serviceWorker' in navigator) {
+    try {
+      await navigator.serviceWorker.ready;
+    } catch (e) {
+      console.warn("Service Worker ready wait failed:", e);
+    }
+  }
+
+  const currentPermission = Notification.permission;
+  
+  if (currentPermission === 'granted') {
     alert("이미 알림 권한이 허용되어 있습니다.");
     renderSettings();
     return;
   }
 
-  if (Notification.permission === 'denied') {
-    alert("알림 권한이 이미 '거부'되어 있어 팝업이 뜨지 않습니다.\n브라우저 설정(주소창 옆 아이콘 또는 브라우저 설정 메뉴)에서 알림 권한을 직접 '허용'으로 변경해 주세요.");
+  if (currentPermission === 'denied') {
+    alert("알림 권한이 '거부(Denied)' 상태입니다. 팝업이 뜨지 않으므로 직접 권한을 재설정해야 합니다.\n\n[해결 방법]\n1. 주소창 옆의 '설정(아이콘)' 클릭\n2. '권한 재설정' 또는 '알림 허용'으로 변경\n3. 앱을 껐다 다시 켜주세요.");
     return;
   }
 
-  // 권한 요청 (Promise 및 Callback 방식 모두 지원)
+  // Request permission
   try {
-    Notification.requestPermission().then(permission => {
-      if (permission === "granted") {
-        alert("알림 권한이 허용되었습니다!");
-      } else {
-        alert("알림 권한이 허용되지 않았습니다.");
+    let result;
+    // Check if the modern promise-based API is supported
+    const promise = Notification.requestPermission();
+    if (promise && promise.then) {
+      result = await promise;
+    } else {
+      // Fallback for very old callback-style environments
+      result = await new Promise(resolve => {
+        Notification.requestPermission(resolve);
+      });
+    }
+
+    if (result === "granted") {
+      alert("알림 권한이 허용되었습니다!");
+      // Show a test notification to ensure it's working
+      if ('serviceWorker' in navigator) {
+        const reg = await navigator.serviceWorker.ready;
+        reg.showNotification("굼바의 운동일지", { body: "알림이 성공적으로 설정되었습니다.", icon: "icon.svg" });
       }
-      renderSettings();
-    });
-  } catch (e) {
-    // 구형 Safari 등 Promise 미지원 환경 대응
-    Notification.requestPermission(permission => {
-      if (permission === "granted") {
-        alert("알림 권한이 허용되었습니다!");
-      } else {
-        alert("알림 권한이 허용되지 않았습니다.");
-      }
-      renderSettings();
-    });
+    } else if (result === "denied") {
+      alert("알림 권한이 거부되었습니다. 설정에서 직접 변경해야 알림을 받을 수 있습니다.");
+    }
+    renderSettings();
+  } catch (err) {
+    console.error("Notification permission request error:", err);
+    alert("알림 권한 요청 중 오류가 발생했습니다. 브라우저 설정을 확인해 주세요.");
   }
 }
 
@@ -1847,10 +1869,11 @@ function renderExecutionControls() {
 
   if (state.timerState === 'stopped' && state.timerTime > 0) {
     ctrlEl.innerHTML = `<button class="btn btn-primary" id="startRestBtn" style="width: 150px;">휴식</button>`;
-    document.getElementById('startRestBtn').addEventListener('click', () => {
+    document.getElementById('startRestBtn').addEventListener('click', async () => {
       initAudio();
+      // Only request if not granted and browser supports it
       if ("Notification" in window && Notification.permission === "default") {
-        Notification.requestPermission();
+        await requestNotificationPermission();
       }
       state.timerState = 'running';
       state.timerInterval = setInterval(handleTimerTick, 1000);
@@ -1870,8 +1893,11 @@ function renderExecutionControls() {
         <button class="btn" id="resetRestBtn">초기화</button>
       </div>
     `;
-    document.getElementById('restartRestBtn').addEventListener('click', () => {
+    document.getElementById('restartRestBtn').addEventListener('click', async () => {
       initAudio();
+      if ("Notification" in window && Notification.permission === "default") {
+        await requestNotificationPermission();
+      }
       state.timerState = 'running';
       state.timerInterval = setInterval(handleTimerTick, 1000);
       renderExecutionControls();
