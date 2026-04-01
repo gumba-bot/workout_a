@@ -1,4 +1,4 @@
-﻿// --- Database Operations ---
+// --- Database Operations ---
 const DB_NAME = 'WorkoutLogDB';
 const DB_VERSION = 3; // Bumped to 3 to ensure InBody store creation for all users
 
@@ -133,11 +133,29 @@ async function seedDefaults() {
 }
 // --- End Database Operations ---
 
+function updateAppIcon() {
+  const isAdmin = localStorage.getItem('isAdmin') === 'true';
+  const iconUrl = isAdmin ? 'icon.png' : 'icon.svg';
+  const iconType = isAdmin ? 'image/png' : 'image/svg+xml';
+
+  const favicon = document.querySelector('link[rel="icon"]');
+  if (favicon) {
+    favicon.href = iconUrl;
+    favicon.type = iconType;
+  }
+
+  const appleIcon = document.querySelector('link[rel="apple-touch-icon"]');
+  if (appleIcon) {
+    appleIcon.href = iconUrl;
+  }
+}
+
 function applyTheme() {
   const mode = localStorage.getItem('themeMode') || 'dark';
   const color = localStorage.getItem('themeColor') || 'blue';
   document.documentElement.setAttribute('data-theme', mode);
   document.documentElement.setAttribute('data-color', color);
+  updateAppIcon();
 }
 applyTheme();
 
@@ -525,6 +543,12 @@ function renderSettings() {
             </button>
           </div>
         </div>
+        <div class="settings-section">
+          <div class="settings-title">관리자 설정</div>
+          <div style="display: flex; gap: 8px;">
+            <input type="password" id="adminCodeInput" placeholder="관리자 번호 입력" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border-color); background: rgba(255,255,255,0.05); color: var(--text-primary); font-family: inherit;" value="${localStorage.getItem('adminInput') || ''}">
+          </div>
+        </div>
         <div class="settings-section" style="border-bottom: none;">
           <div class="settings-title">앱 정보</div>
           <button class="btn btn-secondary" id="openTutorialBtn" style="justify-content: flex-start; padding: 10px; font-size: 0.95rem; width: 100%;">
@@ -582,6 +606,18 @@ function renderSettings() {
   document.getElementById('openExerciseReportBtn').addEventListener('click', () => {
     navigateTo('exercise-report-list');
   });
+
+  const adminInput = document.getElementById('adminCodeInput');
+  adminInput.addEventListener('input', (e) => {
+    const val = e.target.value;
+    localStorage.setItem('adminInput', val);
+    if (val === '010301') {
+      localStorage.setItem('isAdmin', 'true');
+    } else {
+      localStorage.setItem('isAdmin', 'false');
+    }
+    updateAppIcon();
+  });
 }
 
 // 2. Calendar View
@@ -593,7 +629,7 @@ function renderCalendar() {
   const firstDay = new Date(year, month, 1).getDay();
 
   let gridHtml = '';
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const daysOfWeek = ['일', '월', '화', '수', '목', '금', '토'];
   daysOfWeek.forEach(day => {
     gridHtml += `<div class="calendar-day-label">${day}</div>`;
   });
@@ -778,7 +814,7 @@ function renderWorkout() {
   } else {
     w.exercises.forEach((exItem, exIdx) => {
       const dictEx = state.exercises.find(e => e.id === exItem.exerciseId);
-      const exName = dictEx ? dictEx.name : 'Unknown';
+      const exName = dictEx ? dictEx.name : '알 수 없는 종목';
 
       let setsHtml = '';
       exItem.sets.forEach((set, setIdx) => {
@@ -790,7 +826,7 @@ function renderWorkout() {
             <div class="set-status ${statusClass}" data-ex="${exIdx}" data-set="${setIdx}">
               ${statusIcon}
             </div>
-            <div class="set-number">${setIdx + 1}set</div>
+            <div class="set-number">${setIdx + 1}세트</div>
             <div class="inline-input-group">
               <input type="number" class="inline-input weight-input" data-ex="${exIdx}" data-set="${setIdx}" value="${set.weight}" step="2.5" min="0">
               <span class="unit-label">kg</span>
@@ -1807,7 +1843,7 @@ function renderExecution() {
   const w = state.workouts[state.date];
   const exItem = w.exercises[state.activeExerciseIndex];
   const dictEx = state.exercises.find(e => e.id === exItem.exerciseId);
-  const exName = dictEx ? dictEx.name : 'Unknown';
+  const exName = dictEx ? dictEx.name : '알 수 없는 종목';
 
   // Ensure set exists
   if (!exItem.sets[state.activeSetIndex]) {
@@ -1868,7 +1904,7 @@ function renderExecution() {
     <main style="display: flex; flex-direction: column; justify-content: space-between;">
       <div class="execution-container">
         <h2 class="execution-title">${exName}</h2>
-        <div class="execution-set">${currentSetNum}set</div>
+        <div class="execution-set">${currentSetNum}세트</div>
         <div class="execution-metrics">
           <div class="metric-box">
             <div class="metric-value">
@@ -2028,7 +2064,7 @@ function renderExecution() {
 // 6. Report View
 function renderReport() {
   const dictEx = state.exercises.find(e => e.id === state.reportExerciseId);
-  const exName = dictEx ? dictEx.name : 'Unknown';
+  const exName = dictEx ? dictEx.name : '알 수 없는 종목';
 
   // Gather all past workouts for this exercise
   const history = [];
@@ -2294,7 +2330,7 @@ function renderWorkoutReport() {
     if (cMax > pMax) {
       increasedCount++;
       const dictEx = state.exercises.find(e => e.id === exId);
-      const exName = dictEx ? dictEx.name : 'Unknown';
+      const exName = dictEx ? dictEx.name : '알 수 없는 종목';
       let cmpStr = pMax === 0 ? `${cMax.toLocaleString()}kg` : `${pMax.toLocaleString()}kg → ${cMax.toLocaleString()}kg`;
       increasedHtml += `
         <div style="display:flex; justify-content:space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color);">

@@ -5,30 +5,31 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>굼바의 운동일지</title>
-  <!-- Meta for PWA feeling -->
+  <!-- PWA 설정을 위한 메타 태그 -->
   <meta name="theme-color" content="#0F172A">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-  <link rel="apple-touch-icon" href="icon.png">
+  <link rel="icon" type="image/svg+xml" href="icon.svg">
+  <link rel="apple-touch-icon" href="icon.svg">
   <link rel="manifest" href="manifest.json">
-  <!-- Google Fonts -->
+  <!-- 구글 폰트 -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <!-- Phosphor Icons -->
+  <!-- Phosphor 아이콘 -->
   <script src="https://unpkg.com/@phosphor-icons/web"></script>
   <link rel="stylesheet" href="styles.css?v=2">
 </head>
 
 <body>
-  <!-- App Container -->
+  <!-- 앱 컨테이너 -->
   <div id="app"></div>
-  <!-- Scripts -->
+  <!-- 스크립트 -->
   <script src="app.js?v=3"></script>
   <script>
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
         navigator.serviceWorker.register('./sw.js')
-          .then(reg => console.log('ServiceWorker registered:', reg.scope))
-          .catch(err => console.log('ServiceWorker registration failed:', err));
+          .then(reg => console.log('서비스 워커가 등록되었습니다:', reg.scope))
+          .catch(err => console.log('서비스 워커 등록 실패:', err));
       });
     }
   </script>

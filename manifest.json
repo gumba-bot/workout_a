@@ -1,16 +1,16 @@
 {
   "name": "굼바의 운동일지",
   "short_name": "운동일지",
-  "description": "Personal workout tracking application",
+  "description": "나만의 개인 맞춤형 운동 추적 및 일지 어플리케이션",
   "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#0F172A",
   "theme_color": "#0F172A",
   "icons": [
     {
-      "src": "icon.png",
-      "sizes": "192x192 512x512",
-      "type": "image/png",
+      "src": "icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
       "purpose": "any maskable"
     }
   ]
