@@ -135,14 +135,17 @@ async function seedDefaults() {
 
 async function requestNotificationPermission() {
   if (!("Notification" in window)) {
-    // Some mobile browsers might not have Notification but have serviceWorker and showNotification
+    // Some mobile browsers (like old iOS Safari) might not have Notification
+    // Web Push is only supported for PWAs on iOS.
     if (!('serviceWorker' in navigator)) {
-      alert("이 브라우저는 알림 기능을 지원하지 않습니다.\n(iOS 사용자의 경우 '홈 화면에 추가'를 통해 앱을 설치한 뒤 시도해 주세요.)");
+      alert("이 브라우저나 환경 인스턴스는 알림 기능을 지원되지 않습니다.");
       return;
     }
+    alert("알림 기능은 '홈 화면에 추가'하여 앱을 연 뒤에만 활성화할 수 있습니다.\n(iOS Safari 사용자의 경우 하단의 [공유] -> [홈 화면에 추가]를 눌러주세요.)");
+    return;
   }
 
-  // Ensure Service Worker is ready before asking for permission on mobile
+  // Ensure Service Worker is ready if present
   if ('serviceWorker' in navigator) {
     try {
       await navigator.serviceWorker.ready;
@@ -160,19 +163,18 @@ async function requestNotificationPermission() {
   }
 
   if (currentPermission === 'denied') {
-    alert("알림 권한이 '거부(Denied)' 상태입니다. 팝업이 뜨지 않으므로 직접 권한을 재설정해야 합니다.\n\n[해결 방법]\n1. 주소창 옆의 '설정(아이콘)' 클릭\n2. '권한 재설정' 또는 '알림 허용'으로 변경\n3. 앱을 껐다 다시 켜주세요.");
+    alert("알림 권한이 '거부(Denied)' 상태입니다. 직접 권한을 재설정해야 합니다.\n\n[해결 방법]\n1. 주소창 옆의 '설정(아이콘)' 클릭\n2. '권한 재설정' 또는 '알림 허용'으로 변경\n3. 앱을 껐다 다시 켜주세요.");
     return;
   }
 
   // Request permission
   try {
     let result;
-    // Check if the modern promise-based API is supported
-    const promise = Notification.requestPermission();
-    if (promise && promise.then) {
-      result = await promise;
-    } else {
-      // Fallback for very old callback-style environments
+    // Modern Promise-based API
+    try {
+      result = await Notification.requestPermission();
+    } catch (apiErr) {
+      // Fallback for callback-style
       result = await new Promise(resolve => {
         Notification.requestPermission(resolve);
       });
@@ -180,7 +182,6 @@ async function requestNotificationPermission() {
 
     if (result === "granted") {
       alert("알림 권한이 허용되었습니다!");
-      // Show a test notification to ensure it's working
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.ready;
         reg.showNotification("굼바의 운동일지", { body: "알림이 성공적으로 설정되었습니다.", icon: "icon.svg" });
@@ -191,7 +192,7 @@ async function requestNotificationPermission() {
     renderSettings();
   } catch (err) {
     console.error("Notification permission request error:", err);
-    alert("알림 권한 요청 중 오류가 발생했습니다. 브라우저 설정을 확인해 주세요.");
+    alert("알림 권한 요청 중 오류가 발생했습니다: " + err.message);
   }
 }
 
@@ -592,15 +593,16 @@ function renderSettings() {
           <div style="display: flex; flex-direction: column; gap: 8px;">
             <div style="display: flex; justify-content: space-between; align-items: center;">
               <span style="font-size: 0.9rem; color: var(--text-primary);">알림 권한 상태</span>
-              <span style="font-size: 0.85rem; font-weight: bold; color: ${Notification.permission === 'granted' ? 'var(--success)' : 'var(--danger)'}">
-                ${Notification.permission === 'granted' ? '허용됨' : (Notification.permission === 'denied' ? '거부됨' : '미정')}
+              <span style="font-size: 0.85rem; font-weight: bold; color: ${!("Notification" in window) ? 'var(--text-muted)' : (Notification.permission === 'granted' ? 'var(--success)' : 'var(--danger)')}">
+                ${!("Notification" in window) ? '지원 안 함' : (Notification.permission === 'granted' ? '허용됨' : (Notification.permission === 'denied' ? '거부됨' : '미정'))}
               </span>
             </div>
-            ${Notification.permission !== 'granted' ? `
+            ${("Notification" in window) && Notification.permission !== 'granted' ? `
               <button class="btn btn-secondary" id="requestNotiPermBtn" style="padding: 10px; font-size: 0.9rem;">
                 알림 권한 요청하기
               </button>
             ` : ''}
+             ${!("Notification" in window) ? `<p style="font-size: 0.75rem; color: var(--danger); margin: 0;">현재 브라우저는 알림을 직접 지원하지 않습니다.</p>` : ''}
             <button class="btn btn-secondary" id="testNotiBtn" style="padding: 10px; font-size: 0.9rem;">
               알림 및 비프음 테스트
             </button>
@@ -610,13 +612,21 @@ function renderSettings() {
             </p>
           </div>
         </div>
+        <div class="settings-section" style="border-top: 1px solid var(--border); padding-top: 20px; margin-top: 10px;">
+          <button class="btn btn-secondary" id="openTutorialBtn" style="justify-content: center; padding: 12px; font-size: 0.95rem; width: 100%; opacity: 0.8;">
+            <i class="ph ph-question" style="font-size: 1.2rem;"></i> 도움말 / 튜토리얼 다시 보기
+          </button>
+        </div>
       </div>
     </main>
   `;
 
-  document.getElementById('closeSettingsBtn').addEventListener('click', () => {
-    navigateTo('calendar');
-  });
+  const safeAddListener = (id, event, handler) => {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener(event, handler);
+  };
+
+  safeAddListener('closeSettingsBtn', 'click', () => navigateTo('calendar'));
 
   document.querySelectorAll('.mode-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
@@ -636,41 +646,21 @@ function renderSettings() {
     });
   });
 
-  document.getElementById('exportDataBtn').addEventListener('click', () => exportAllData());
-  document.getElementById('importDataBtn').addEventListener('click', () => importAllData());
-
-  document.getElementById('openTutorialBtn').addEventListener('click', () => {
-    navigateTo('tutorial');
-  });
-
-  document.getElementById('manageExGrpBtn').addEventListener('click', () => {
+  safeAddListener('exportDataBtn', 'click', () => exportAllData());
+  safeAddListener('importDataBtn', 'click', () => importAllData());
+  safeAddListener('openTutorialBtn', 'click', () => navigateTo('tutorial'));
+  safeAddListener('manageExGrpBtn', 'click', () => {
     navigateTo('add-exercise', { addExerciseSourceView: 'settings' });
   });
-  document.getElementById('openFiveThreeOneBtn').addEventListener('click', () => {
-    navigateTo('five-three-one');
-  });
-  document.getElementById('openOneRmCalcBtn').addEventListener('click', () => {
-    navigateTo('one-rm-calculator');
-  });
-  document.getElementById('openInBodyBtn').addEventListener('click', () => {
-    navigateTo('inbody-list');
-  });
-  document.getElementById('openWorkoutReportBtn').addEventListener('click', () => {
+  safeAddListener('openFiveThreeOneBtn', 'click', () => navigateTo('five-three-one'));
+  safeAddListener('openOneRmCalcBtn', 'click', () => navigateTo('one-rm-calculator'));
+  safeAddListener('openInBodyBtn', 'click', () => navigateTo('inbody-list'));
+  safeAddListener('openWorkoutReportBtn', 'click', () => {
     navigateTo('workout-report', { reportDate: toDateStr(new Date()) });
   });
-  document.getElementById('openExerciseReportBtn').addEventListener('click', () => {
-    navigateTo('exercise-report-list');
-  });
-
-
-  const requestNotiBtn = document.getElementById('requestNotiPermBtn');
-  if (requestNotiBtn) {
-    requestNotiBtn.addEventListener('click', () => {
-      requestNotificationPermission();
-    });
-  }
-
-  document.getElementById('testNotiBtn').addEventListener('click', () => {
+  safeAddListener('openExerciseReportBtn', 'click', () => navigateTo('exercise-report-list'));
+  safeAddListener('requestNotiPermBtn', 'click', () => requestNotificationPermission());
+  safeAddListener('testNotiBtn', 'click', () => {
     initAudio();
     playTimerEndNotification();
   });
