@@ -155,7 +155,7 @@ async function requestNotificationPermission() {
   }
 
   const currentPermission = Notification.permission;
-  
+
   if (currentPermission === 'granted') {
     alert("이미 알림 권한이 허용되어 있습니다.");
     renderSettings();
@@ -184,7 +184,7 @@ async function requestNotificationPermission() {
       alert("알림 권한이 허용되었습니다!");
       if ('serviceWorker' in navigator) {
         const reg = await navigator.serviceWorker.ready;
-        reg.showNotification("굼바의 운동일지", { body: "알림이 성공적으로 설정되었습니다.", icon: "icon.svg" });
+        reg.showNotification("운동일지", { body: "알림이 성공적으로 설정되었습니다.", icon: "icon.svg" });
       }
     } else if (result === "denied") {
       alert("알림 권한이 거부되었습니다. 설정에서 직접 변경해야 알림을 받을 수 있습니다.");
@@ -742,7 +742,7 @@ function renderCalendar() {
   appEl.innerHTML = `
     <header>
       <div style="width:40px"></div>
-      <h1>굼바의 운동일지</h1>
+      <h1>운동일지</h1>
       <button class="icon-btn" id="settingsBtn"><i class="ph ph-gear"></i></button>
     </header>
     <main style="display: flex; flex-direction: column; height: 100%;">
@@ -1870,7 +1870,7 @@ function renderExecutionControls() {
       renderExecutionControls();
     });
   } else if (state.timerState === 'running') {
-    ctrlEl.innerHTML = `<button class="btn btn-danger" id="stopRestBtn" style="width: 150px;">정지</button>`;
+    ctrlEl.innerHTML = `<button class="btn" id="stopRestBtn" style="width: 150px; background: transparent; border: 1px solid var(--accent-primary); color: var(--accent-primary);">정지</button>`;
     document.getElementById('stopRestBtn').addEventListener('click', () => {
       state.timerState = 'paused';
       clearInterval(state.timerInterval);
