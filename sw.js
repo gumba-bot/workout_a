@@ -1,4 +1,4 @@
-const CACHE_NAME = 'workout-log-cache-v5';
+const CACHE_NAME = 'workout-log-cache-v6';
 const urlsToCache = [
   './',
   './index.html',
@@ -67,4 +67,30 @@ self.addEventListener('notificationclick', event => {
       }
     })
   );
+});
+
+// --- Background Timer Logic ---
+let bgTimerId = null;
+
+self.addEventListener('message', event => {
+  if (event.data && event.data.type === 'SCHEDULE_TIMER') {
+    if (bgTimerId) clearTimeout(bgTimerId);
+    
+    bgTimerId = setTimeout(() => {
+      const title = "휴식 종료";
+      const options = {
+        body: "휴식시간이 끝났습니다! 다음 세트를 준비하세요.",
+        vibrate: [200, 100, 200],
+        tag: "rest-timer-notification",
+        renotify: true,
+        icon: './icon.png' // optional icon
+      };
+      self.registration.showNotification(title, options);
+    }, event.data.duration);
+  } else if (event.data && event.data.type === 'CANCEL_TIMER') {
+    if (bgTimerId) {
+      clearTimeout(bgTimerId);
+      bgTimerId = null;
+    }
+  }
 });

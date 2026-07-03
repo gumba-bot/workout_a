@@ -2009,6 +2009,7 @@ function handleTimerTick() {
         state.timerTime = 0;
         state.timerState = 'stopped';
         clearInterval(state.timerInterval);
+        cancelBackgroundTimerNotification();
         state.timerEndTime = null;
         playTimerEndNotification();
 
@@ -2027,6 +2028,40 @@ function handleTimerTick() {
   }
 }
 
+// --- Background Timer Support ---
+// When the app goes to background, setInterval is throttled/paused.
+// On return, we immediately sync the timer state using the absolute timerEndTime.
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && state.timerState === 'running' && state.timerEndTime) {
+    // Immediately sync timer on app resume
+    handleTimerTick();
+
+    // Re-register interval (old one may have been killed by OS)
+    clearInterval(state.timerInterval);
+    state.timerInterval = setInterval(handleTimerTick, 250);
+  }
+});
+
+// Schedule a notification via Service Worker for background timer completion
+function scheduleBackgroundTimerNotification(durationMs) {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'SCHEDULE_TIMER',
+      duration: durationMs
+    });
+  }
+}
+
+// Cancel the background SW timer (e.g. when user pauses or resets)
+function cancelBackgroundTimerNotification() {
+  if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+    navigator.serviceWorker.controller.postMessage({
+      type: 'CANCEL_TIMER'
+    });
+  }
+}
+
+
 function renderExecutionControls() {
   const ctrlEl = document.getElementById('timerControlsRow');
   if (!ctrlEl) return;
@@ -2041,7 +2076,8 @@ function renderExecutionControls() {
       }
       state.timerState = 'running';
       state.timerEndTime = Date.now() + state.timerTime * 1000;
-      state.timerInterval = setInterval(handleTimerTick, 1000);
+      state.timerInterval = setInterval(handleTimerTick, 250);
+      scheduleBackgroundTimerNotification(state.timerTime * 1000);
       renderExecutionControls();
     });
   } else if (state.timerState === 'running') {
@@ -2050,6 +2086,7 @@ function renderExecutionControls() {
       state.timerState = 'paused';
       state.timerEndTime = null;
       clearInterval(state.timerInterval);
+      cancelBackgroundTimerNotification();
       renderExecutionControls();
     });
   } else if (state.timerState === 'paused') {
@@ -2066,12 +2103,14 @@ function renderExecutionControls() {
       }
       state.timerState = 'running';
       state.timerEndTime = Date.now() + state.timerTime * 1000;
-      state.timerInterval = setInterval(handleTimerTick, 1000);
+      state.timerInterval = setInterval(handleTimerTick, 250);
+      scheduleBackgroundTimerNotification(state.timerTime * 1000);
       renderExecutionControls();
     });
     document.getElementById('resetRestBtn').addEventListener('click', () => {
       state.timerState = 'stopped';
       state.timerEndTime = null;
+      cancelBackgroundTimerNotification();
       const inputEl = document.getElementById('restTimerInput');
       state.timerTime = parseInt(inputEl ? inputEl.getAttribute('data-default') : 90);
       setTimerText();
@@ -2100,6 +2139,7 @@ function renderExecution() {
   // Reset timer if exercise switched or if it's currently stopped
   if (state.timerExerciseId !== exItem.exerciseId) {
     if (state.timerInterval) clearInterval(state.timerInterval);
+    cancelBackgroundTimerNotification();
     state.timerInterval = null;
     state.timerState = 'stopped';
     state.timerTime = defRest;
@@ -2213,6 +2253,7 @@ function renderExecution() {
 
   document.getElementById('execBackBtn').addEventListener('click', () => {
     clearInterval(state.timerInterval);
+    cancelBackgroundTimerNotification();
     navigateTo('workout');
   });
 
@@ -2230,7 +2271,10 @@ function renderExecution() {
       let newTime = parseInt(e.target.value);
       if (isNaN(newTime) || newTime < 0) newTime = 0;
       state.timerTime = newTime;
-      if (state.timerState === 'running') state.timerEndTime = Date.now() + newTime * 1000;
+      if (state.timerState === 'running') {
+        state.timerEndTime = Date.now() + newTime * 1000;
+        scheduleBackgroundTimerNotification(newTime * 1000);
+      }
       e.target.setAttribute('data-default', newTime);
       setTimerText();
 
@@ -2248,7 +2292,10 @@ function renderExecution() {
       let newDefault = currentDefault + 30;
       if (restInput) restInput.setAttribute('data-default', newDefault);
       state.timerTime += 30;
-      if (state.timerState === 'running' && state.timerEndTime) state.timerEndTime += 30000;
+      if (state.timerState === 'running' && state.timerEndTime) {
+        state.timerEndTime += 30000;
+        scheduleBackgroundTimerNotification(state.timerEndTime - Date.now());
+      }
       setTimerText();
 
       if (dictEx) {
@@ -2268,6 +2315,7 @@ function renderExecution() {
       if (state.timerState === 'running' && state.timerEndTime) {
         state.timerEndTime -= 30000;
         if (state.timerEndTime < Date.now()) state.timerEndTime = Date.now();
+        scheduleBackgroundTimerNotification(state.timerEndTime - Date.now());
       }
       setTimerText();
 
@@ -2352,7 +2400,8 @@ function renderExecution() {
 
       // 전환 후 타이머 동작 및 권한 요청
       state.timerEndTime = Date.now() + defRest * 1000;
-      state.timerInterval = setInterval(handleTimerTick, 1000);
+      state.timerInterval = setInterval(handleTimerTick, 250);
+      scheduleBackgroundTimerNotification(defRest * 1000);
       initAudio();
       if ("Notification" in window && Notification.permission === "default") {
         requestNotificationPermission().catch(e => console.warn(e));
@@ -2360,6 +2409,7 @@ function renderExecution() {
     } else {
       // Completed last set, go back or show well done
       clearInterval(state.timerInterval);
+      cancelBackgroundTimerNotification();
       navigateTo('workout');
     }
   });
