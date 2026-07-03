@@ -1,0 +1,15 @@
+# Backup files
+*.json
+!manifest.json
+!package.json
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Excel
+*.xlsx

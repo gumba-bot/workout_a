@@ -1,0 +1,45 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="iconGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5D83FF;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#A26BFF;stop-opacity:1" />
+    </linearGradient>
+    <radialGradient id="capShadow" cx="50%" cy="40%" r="60%">
+      <stop offset="0%" style="stop-color:#8B4513;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5D2E0C;stop-opacity:1" />
+    </radialGradient>
+  </defs>
+  
+  <rect width="512" height="512" rx="120" fill="url(#iconGrad)"/>
+
+  <g transform="translate(256, 260) scale(0.95) translate(-256, -256)">
+    
+    <rect x="70" y="265" width="372" height="12" rx="6" fill="#E0E0E0"/>
+    <rect x="55" y="215" width="30" height="110" rx="8" fill="#F5F5F5"/>
+    <rect x="95" y="215" width="15" height="110" rx="4" fill="#D1D1D1"/>
+    <rect x="427" y="215" width="30" height="110" rx="8" fill="#F5F5F5"/>
+    <rect x="402" y="215" width="15" height="110" rx="4" fill="#D1D1D1"/>
+
+    <path d="M256 160 C170 160 130 250 130 350 Q256 385 382 350 C382 250 342 160 256 160 Z" fill="url(#capShadow)" stroke="#3E1F08" stroke-width="2"/>
+
+    <rect x="155" y="225" width="202" height="36" rx="4" fill="#FF5252"/>
+    <rect x="155" y="236" width="202" height="12" fill="white" fill-opacity="0.9"/>
+
+    <ellipse cx="215" cy="305" rx="15" ry="22" fill="white"/>
+    <circle cx="218" cy="310" r="6" fill="#1A1A1A"/>
+    
+    <ellipse cx="297" cy="305" rx="15" ry="22" fill="white"/>
+    <circle cx="294" cy="310" r="6" fill="#1A1A1A"/>
+
+    <path d="M180 280 L240 305" stroke="#1A1A1A" stroke-width="12" stroke-linecap="round"/>
+    <path d="M332 280 L272 305" stroke="#1A1A1A" stroke-width="12" stroke-linecap="round"/>
+
+    <path d="M210 355 Q256 345 302 355" fill="none" stroke="#1A1A1A" stroke-width="4" stroke-linecap="round"/>
+
+    <ellipse cx="200" cy="390" rx="45" ry="25" fill="#3E1F08"/>
+    <ellipse cx="312" cy="390" rx="45" ry="25" fill="#3E1F08"/>
+
+    <path d="M150 300 Q140 310 150 320 Q160 310 150 300" fill="#E3F2FD" opacity="0.9"/>
+    <path d="M362 300 Q372 310 362 320 Q352 310 362 300" fill="#E3F2FD" opacity="0.9"/>
+  </g>
+</svg>
