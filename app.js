@@ -381,6 +381,49 @@ function roundToStep(value, step = 2.5) {
   return Math.round(value / step) * step;
 }
 
+function roundWorkoutWeight(value) {
+  const weight = Number(value);
+  if (!Number.isFinite(weight)) return 0;
+  return Math.max(0, Math.round((weight + Number.EPSILON) * 10) / 10);
+}
+
+function normalizeWorkoutWeights(workout) {
+  let changed = false;
+
+  (workout.exercises || []).forEach(exercise => {
+    (exercise.sets || []).forEach(set => {
+      const roundedWeight = roundWorkoutWeight(set.weight);
+      if (set.weight !== roundedWeight) {
+        set.weight = roundedWeight;
+        changed = true;
+      }
+    });
+  });
+
+  return changed;
+}
+
+function getExercisePersonalRecords() {
+  const personalRecords = new Map();
+
+  Object.values(state.workouts).forEach(workout => {
+    (workout.exercises || []).forEach(exercise => {
+      (exercise.sets || []).forEach(set => {
+        const weight = Number(set.weight);
+        const reps = Number(set.reps);
+        if (!set.completed || !Number.isFinite(weight) || weight <= 0 || !Number.isFinite(reps) || reps <= 0) return;
+
+        const currentRecord = personalRecords.get(exercise.exerciseId);
+        if (!currentRecord || weight > currentRecord.weight || (weight === currentRecord.weight && reps > currentRecord.reps)) {
+          personalRecords.set(exercise.exerciseId, { weight, reps });
+        }
+      });
+    });
+  });
+
+  return personalRecords;
+}
+
 async function loadData() {
   await initDB();
   await seedDefaults();
@@ -389,9 +432,12 @@ async function loadData() {
   state.inbodyRecords = await getAllRecords('inbody');
   state.inbodyRecords.sort((a, b) => b.date.localeCompare(a.date)); // Newest first by default
   const allWorkouts = await getAllRecords('workouts');
+  const workoutsToUpdate = [];
   allWorkouts.forEach(w => {
+    if (normalizeWorkoutWeights(w)) workoutsToUpdate.push(w);
     state.workouts[w.date] = w;
   });
+  await Promise.all(workoutsToUpdate.map(w => putRecord('workouts', w)));
 }
 
 async function startApp() {
@@ -1005,6 +1051,7 @@ function renderCalendar() {
 // 3. Workout View
 async function saveCurrentWorkout() {
   if (state.workouts[state.date]) {
+    normalizeWorkoutWeights(state.workouts[state.date]);
     await putRecord('workouts', state.workouts[state.date]);
   }
 }
@@ -1021,6 +1068,7 @@ function renderWorkout() {
   const scrollTop = mainEl ? mainEl.scrollTop : 0;
 
   let listHtml = '';
+  const personalRecords = getExercisePersonalRecords();
 
   if (w.exercises.length === 0) {
     listHtml = `<div class="info-text" style="margin: 40px 0;">아직 추가된 운동이 없습니다.</div>`;
@@ -1028,6 +1076,10 @@ function renderWorkout() {
     w.exercises.forEach((exItem, exIdx) => {
       const dictEx = state.exercises.find(e => e.id === exItem.exerciseId);
       const exName = dictEx ? dictEx.name : '알 수 없는 종목';
+      const personalRecord = personalRecords.get(exItem.exerciseId);
+      const personalRecordText = personalRecord
+        ? `${personalRecord.weight.toLocaleString()}${state.weightUnit}×${personalRecord.reps.toLocaleString()}`
+        : '-';
 
       let setsHtml = '';
       exItem.sets.forEach((set, setIdx) => {
@@ -1059,11 +1111,12 @@ function renderWorkout() {
         <div class="glass-panel exercise-card" data-ex="${exIdx}">
           <div class="exercise-header">
             <div class="exercise-name" style="flex: 1;">
-              ${exName}
+              <span class="exercise-name-text">${exName}</span>
             </div>
-            <button class="action-btn report-ex-btn" data-ex="${exIdx}" style="margin-right: 8px;" aria-label="기록 보기">
+            <button class="action-btn report-ex-btn" data-ex="${exIdx}" aria-label="기록 보기">
               <i class="ph ph-chart-bar" style="font-size: 1.3rem; color: var(--accent-primary); pointer-events: none;"></i>
             </button>
+            <span class="exercise-best" title="역대 최고 무게와 해당 세트의 수행 횟수">${personalRecordText}</span>
             <button class="action-btn toggle-ex-sets-btn" data-ex="${exIdx}" style="margin-right: 8px;" aria-label="해당 종목 전체완료">
               <i class="ph ph-check-square-offset" style="font-size: 1.3rem; color: var(--success); pointer-events: none;"></i>
             </button>
@@ -1234,7 +1287,9 @@ function renderWorkout() {
       const setIdx = parseInt(e.target.getAttribute('data-set'));
       const val = parseFloat(e.target.value) || 0;
       if (e.target.classList.contains('weight-input')) {
-        w.exercises[exIdx].sets[setIdx].weight = val;
+        const roundedWeight = roundWorkoutWeight(val);
+        w.exercises[exIdx].sets[setIdx].weight = roundedWeight;
+        e.target.value = roundedWeight;
       } else {
         w.exercises[exIdx].sets[setIdx].reps = val;
       }
@@ -2338,7 +2393,9 @@ function renderExecution() {
 
   // Update Weight and Reps directly from Execution screen
   document.getElementById('execWeightInput').addEventListener('change', async (e) => {
-    exItem.sets[state.activeSetIndex].weight = parseFloat(e.target.value) || 0;
+    const roundedWeight = roundWorkoutWeight(e.target.value);
+    exItem.sets[state.activeSetIndex].weight = roundedWeight;
+    e.target.value = roundedWeight;
     await saveCurrentWorkout();
   });
 
@@ -2351,14 +2408,14 @@ function renderExecution() {
   const weightInput = document.getElementById('execWeightInput');
   document.getElementById('weightUpBtn').addEventListener('click', async () => {
     const cur = parseFloat(weightInput.value) || 0;
-    const next = Math.round((cur + state.weightStep) * 1000) / 1000;
+    const next = roundWorkoutWeight(cur + state.weightStep);
     weightInput.value = next;
     exItem.sets[state.activeSetIndex].weight = next;
     await saveCurrentWorkout();
   });
   document.getElementById('weightDownBtn').addEventListener('click', async () => {
     const cur = parseFloat(weightInput.value) || 0;
-    const next = Math.max(0, Math.round((cur - state.weightStep) * 1000) / 1000);
+    const next = roundWorkoutWeight(cur - state.weightStep);
     weightInput.value = next;
     exItem.sets[state.activeSetIndex].weight = next;
     await saveCurrentWorkout();
