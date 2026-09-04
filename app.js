@@ -1113,10 +1113,10 @@ function renderWorkout() {
             <div class="exercise-name" style="flex: 1;">
               <span class="exercise-name-text">${exName}</span>
             </div>
+            <span class="exercise-best" title="역대 최고 무게와 해당 세트의 수행 횟수">${personalRecordText}</span>
             <button class="action-btn report-ex-btn" data-ex="${exIdx}" aria-label="기록 보기">
               <i class="ph ph-chart-bar" style="font-size: 1.3rem; color: var(--accent-primary); pointer-events: none;"></i>
             </button>
-            <span class="exercise-best" title="역대 최고 무게와 해당 세트의 수행 횟수">${personalRecordText}</span>
             <button class="action-btn toggle-ex-sets-btn" data-ex="${exIdx}" style="margin-right: 8px;" aria-label="해당 종목 전체완료">
               <i class="ph ph-check-square-offset" style="font-size: 1.3rem; color: var(--success); pointer-events: none;"></i>
             </button>
